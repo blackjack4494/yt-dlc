@@ -1398,8 +1398,8 @@ class InfoExtractor(object):
                 except ValueError:
                     audio_ext_preference = -1
             else:
-                if f.get('acodec') == 'none':  # video only
-                    preference -= 40
+                # if f.get('acodec') == 'none':  # video only
+                #     preference -= 40
                 if self._downloader.params.get('prefer_free_formats'):
                     ORDER = ['flv', 'mp4', 'webm']
                 else:

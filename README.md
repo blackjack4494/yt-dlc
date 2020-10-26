@@ -381,6 +381,10 @@ I will add some memorable short links to the binaries so you can download them e
 ## Video Format Options:
     -f, --format FORMAT              Video format code, see the "FORMAT
                                      SELECTION" for all the info
+    --video-multistreams             Allow multiple video streams to be merged into a single file (default)
+    --no-video-multistreams          Only one video stream is downloaded for each output file
+    --audio-multistreams             Allow multiple audio streams to be merged into a single file (default)
+    --no-audio-multistreams          Only one audio stream is downloaded for each output file
     --all-formats                    Download all available video formats
     --prefer-free-formats            Prefer free video formats unless a specific
                                      one is requested
@@ -694,12 +698,23 @@ You can also use a file extension (currently `3gp`, `aac`, `flv`, `m4a`, `mp3`, 
 
 You can also use special names to select particular edge case formats:
 
- - `best`: Select the best quality format represented by a single file with video and audio.
- - `worst`: Select the worst quality format represented by a single file with video and audio.
- - `bestvideo`: Select the best quality video-only format (e.g. DASH video). May not be available.
- - `worstvideo`: Select the worst quality video-only format. May not be available.
- - `bestaudio`: Select the best quality audio only-format. May not be available.
- - `worstaudio`: Select the worst quality audio only-format. May not be available.
+ - `b*`, `best*`: Select the best quality format irrespective of whether it contains video or audio.
+ - `w*`, `worst*`: Select the worst quality format irrespective of whether it contains video or audio.
+
+ - `b`, `best`: Select the best quality format that contains both video and audio. Equivalent to `best*[vcodec!=none][acodec!=none]`
+ - `w`, `worst`: Select the worst quality format that contains both video and audio. Equivalent to `worst*[vcodec!=none][acodec!=none]`
+
+ - `bv`, `bestvideo`: Select the best quality video-only format. Equivalent to `best*[acodec=none]`
+ - `wv`, `worstvideo`: Select the worst quality video-only format. Equivalent to `worst*[acodec=none]`
+
+ - `bv*`, `bestvideo*`: Select the best quality format that contains video. It may also contain audio. Equivalent to `best*[vcodec!=none]`
+ - `wv*`, `worstvideo*`: Select the worst quality format that contains video. It may also contain audio. Equivalent to `worst*[vcodec!=none]`
+
+ - `ba`, `bestaudio`: Select the best quality audio-only format. Equivalent to `best*[vcodec=none]`
+ - `wa`, `worstaudio`: Select the worst quality audio-only format. Equivalent to `worst*[vcodec=none]`
+
+ - `ba*`, `bestaudio*`: Select the best quality format that contains audio. It may also contain video. Equivalent to `best*[acodec!=none]`
+ - `wa*`, `worstaudio*`: Select the worst quality format that contains audio. It may also contain video. Equivalent to `worst*[acodec!=none]`
 
 For example, to download the worst quality video-only format you can use `-f worstvideo`.
 
@@ -735,7 +750,7 @@ Note that none of the aforementioned meta fields are guaranteed to be present si
 
 Formats for which the value is not known are excluded unless you put a question mark (`?`) after the operator. You can combine format filters, so `-f "[height <=? 720][tbr>500]"` selects up to 720p videos (or videos where the height is not known) with a bitrate of at least 500 KBit/s.
 
-You can merge the video and audio of two formats into a single file using `-f <video-format>+<audio-format>` (requires ffmpeg or avconv installed), for example `-f bestvideo+bestaudio` will download the best video-only format, the best audio-only format and mux them together with ffmpeg/avconv.
+You can merge the video and audio of multiple formats into a single file using `-f <format1>+<format2>+...` (requires ffmpeg or avconv installed), for example `-f bestvideo+bestaudio` will download the best video-only format, the best audio-only format and mux them together with ffmpeg/avconv. If `--no-video-multistreams` is used, all formats with a video stream except the first one are ignored. Similarly, if `--no-audio-multistreams` is used, all formats with an audio stream except the first one are ignored. For example, `-f bestvideo+best+bestaudio` will download and merge all 3 given formats. The resulting file will have 2 video streams and 2 audio streams. But `-f bestvideo+best+bestaudio --no-video-multistreams` will download and merge only `bestvideo` and `bestaudio`. `best` is ignored since another format containing a video stream (`bestvideo`) has already been selected. The order of the formats is therefore important. `-f best+bestaudio --no-audio-multistreams` will download and merge both formats while `-f bestaudio+best --no-audio-multistreams` will ignore `best` and download only `bestaudio`.
 
 Format selectors can also be grouped using parentheses, for example if you want to download the best mp4 and webm formats with a height lower than 480 you can use `-f '(mp4,webm)[height<480]'`.
 
@@ -748,6 +763,9 @@ If you want to preserve the old format selection behavior (prior to youtube-dlc 
 Note that on Windows you may need to use double quotes instead of single.
 
 ```bash
+# Download best format that contains video and if it doesn't already have an audio stream, merge it with best audio-only format
+$ youtube-dlc -f 'bestvideo*+bestaudio' --no-audio-multistreams
+
 # Download best mp4 format available or any other best if no mp4 available
 $ youtube-dlc -f 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
 

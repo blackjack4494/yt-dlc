@@ -347,6 +347,8 @@ def _real_main(argv=None):
         'simulate': opts.simulate or any_getting,
         'skip_download': opts.skip_download,
         'format': opts.format,
+        'allow_multiple_video_streams': opts.allow_multiple_video_streams,
+        'allow_multiple_audio_streams': opts.allow_multiple_audio_streams,
         'listformats': opts.listformats,
         'outtmpl': outtmpl,
         'autonumber_size': opts.autonumber_size,
