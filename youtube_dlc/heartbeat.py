@@ -21,7 +21,7 @@ class Heartbeat(object):
             method=params.get('method')
         )
 
-        self.interval = params.get('interval')
+        self.interval = params.get('interval', 30)
         self.stopped = False
         self.thread = threading.Thread(target=self.__heartbeat, daemon=True)
 

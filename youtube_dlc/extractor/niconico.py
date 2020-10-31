@@ -254,6 +254,19 @@ class NiconicoIE(InfoExtractor):
                 }
             }).encode())
 
+        heartbeat_url = '{}/{}?_format=json&_method=PUT'.format(session_api_endpoint['url'], session_response['data']['session']['id'])
+        heartbeat_headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        }
+        heartbeat = {
+            'data': json.dumps(session_response['data']),
+            'headers': heartbeat_headers,
+            'interval': session_api_data['heartbeat_lifetime'] / 2000,
+            'method': 'POST',
+            'url': heartbeat_url,
+        }
+
         resolution = video_quality.get('resolution', {})
 
         return {
@@ -264,6 +277,7 @@ class NiconicoIE(InfoExtractor):
             'vbr': float_or_none(video_quality.get('bitrate'), 1000),
             'height': resolution.get('height'),
             'width': resolution.get('width'),
+            'heartbeat': heartbeat,
         }
 
     def _real_extract(self, url):
