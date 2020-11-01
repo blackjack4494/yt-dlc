@@ -25,7 +25,7 @@ class Heartbeat(object):
         )
 
         self.interval = params.get('interval', 30)
-        self.stopped = False
+        self.cancelled = False
         self.thread = threading.Thread(target=self.__heartbeat, daemon=True)
 
     def start(self):
@@ -33,16 +33,16 @@ class Heartbeat(object):
             self.ydl.to_screen('[heartbeat] Heartbeat every %s seconds' % self.interval)
         self.thread.start()
 
-    def stop(self):
-        self.stopped = True
+    def cancel(self):
+        self.cancelled = True
 
     def check_download_status(self, progress):
         status = progress.get('status')
         if status == 'finished' or status == 'error':
-            self.stop()
+            self.cancel()
 
     def __heartbeat(self):
-        while not self.stopped:
+        while not self.cancelled:
             try:
                 if self.ydl.params.get('verbose'):
                     self.ydl.to_screen('[heartbeat]')
