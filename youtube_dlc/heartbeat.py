@@ -6,6 +6,7 @@ import threading
 import traceback
 
 from .utils import (
+    compat_str,
     sanitized_Request
 )
 
@@ -15,7 +16,7 @@ class Heartbeat(object):
         self.ydl = ydl
 
         data = params.get('data')
-        if type(data) is str:
+        if isinstance(data, compat_str):
             data = data.encode()
         self.request = sanitized_Request(
             params.get('url'),
