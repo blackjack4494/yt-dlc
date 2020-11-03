@@ -1,12 +1,12 @@
 # coding: utf-8
 from __future__ import unicode_literals
 
-import time
 import threading
 import traceback
 
 from .utils import (
     compat_str,
+    encode_compat_str,
     sanitized_Request
 )
 
@@ -27,11 +27,11 @@ class Heartbeat(object):
 
         self.interval = params.get('interval', 30)
         self.cancelled = False
-        self.thread = threading.Thread(target=self.__heartbeat, daemon=True)
+        self.parent_thread = threading.current_thread()
+        self.thread = threading.Thread(target=self.__heartbeat)
 
     def start(self):
-        if self.ydl.params.get('verbose'):
-            self.ydl.to_screen('[heartbeat] Heartbeat every %s seconds' % self.interval)
+        self.ydl.to_screen('[heartbeat] Heartbeat every %s seconds' % self.interval)
         self.thread.start()
 
     def cancel(self):
@@ -49,7 +49,9 @@ class Heartbeat(object):
                     self.ydl.to_screen('[heartbeat]')
                 self.ydl.urlopen(self.request)
             except Exception:
+                self.ydl.report_warning("[heartbeat] Heartbeat failed")
                 if self.ydl.params.get('verbose'):
-                    traceback.print_exc()
-                self.ydl.to_screen("[heartbeat] Heartbeat failed")
-            time.sleep(self.interval)
+                    self.ydl.to_stderr(encode_compat_str(traceback.format_exc()))
+            self.parent_thread.join(self.interval)
+            if not self.parent_thread.is_alive():
+                break
