@@ -382,28 +382,16 @@ I will add some memorable short links to the binaries so you can download them e
 
 
 ## Video Format Options:
-    -f, --format FORMAT              Video format code, see the "FORMAT
-                                     SELECTION" for all the info
-    -S, --format-sort SORTORDER      Sort the formats by the fields given. 
-                                     Default order: avoid_bad, has_video, extractor, language, 
-                                     height, width, proto, fps, codec, filesize, filesize_approx, 
-                                     tbr, vbr, has_audio, abr, audio_codec, quality, source, format_id.
-                                     Prefix the field (except format_id) by a + to 
-                                     perform the sort in reverse. Suffix the field with 
-                                     :NUMBER to give highest preference to "NUMBER". 
-                                     Examples: 1) 
-                                     "-f bestvideo --format-sort +height:720,fps,+filesize" 
-                                     gets the video with the smallest filesize with the 
-                                     largest fps with the smallest height>=720 (or 
-                                     largest height available if there is no such format). 
-                                     2) "-f bestvideo --format-sort height:720,tbr" gets the 
-                                     video with largest bitrate with the largest height<=720 
-                                     (or smallest height available if there is no such format)
-    --S-force, --format-sort-force   User specified sort order takes priority even over
-                                     avoid_bad, has_video and language. These fields normally 
-                                     filter out the undesirable formats. Use with caution. 
-    --no-format-sort-force           avoid_bad, has_video, extractor and language
-                                     takes priority over any user specified sort order (default)
+    -f, --format FORMAT              Video format code, see "FORMAT SELECTION"
+                                     for more details
+    -S, --format-sort SORTORDER      Sort the formats by the fields given, see
+                                     "Sorting Formats" for more details
+    --S-force, --format-sort-force   Force user specified sort order to have 
+                                     precedence over all fields, see "Sorting 
+                                     Formats" for more details
+    --no-format-sort-force           Some fields have precedence over the user
+                                     specified sort order, see "Sorting Formats"
+                                     for more details (default)
     --all-formats                    Download all available video formats
     --prefer-free-formats            Prefer free video formats unless a specific
                                      one is requested
@@ -442,8 +430,8 @@ I will add some memorable short links to the binaries so you can download them e
 
 ## Adobe Pass Options:
     --ap-mso MSO                     Adobe Pass multiple-system operator (TV
-                                     provider) identifier, use --ap-list-mso for
-                                     a list of available MSOs
+                                     provider) identifier, use --ap-list-mso
+                                     for a list of available MSOs
     --ap-username USERNAME           Multiple-system operator account login
     --ap-password PASSWORD           Multiple-system operator account password.
                                      If this option is left out, youtube-dlc
@@ -730,7 +718,7 @@ If you want to download multiple videos and they don't have the same formats ava
 
 If you want to download several formats of the same video use a comma as a separator, e.g. `-f 22,17,18` will download all these three formats, of course if they are available. Or a more sophisticated example combined with the precedence feature: `-f 136/137/mp4/bestvideo,140/m4a/bestaudio`.
 
-You can merge the video and audio of two formats into a single file using `-f <video-format>+<audio-format>` (requires ffmpeg or avconv installed), for example `-f bestvideo+bestaudio` will download the best video-only format, the best audio-only format and mux them together with ffmpeg/avconv.
+You can merge the video and audio of multiple formats into a single file using `-f <format-1>+<format-2>` (requires ffmpeg or avconv installed), for example `-f bestvideo+bestaudio` will download the best video-only format, the best audio-only format and mux them together with ffmpeg/avconv.
 
 
 ## Filtering Formats
@@ -767,7 +755,41 @@ Format selectors can also be grouped using parentheses, for example if you want 
 
 ## Sorting Formats
 
-TODO
+You can change the criteria for being considered the `best` by using `-S` (`--format-sort`). The general format for this is `--format-sort field1,field2...`. The available fields are:
+
+ - `video`, `has_video`: Gives priority to formats that has a video stream
+ - `audio`, `has_audio`: Gives priority to formats that has a audio stream
+ - `extractor`, `preference`, `extractor_preference`: The format preference as given by the extractor
+ - `lang`, `language_preference`: Language preference as given by the extractor
+ - `quality`: The quality of the format. This is a metadata field available in some websites
+ - `source`, `source_preference`: Preference of the source as given by the extractor
+ - `proto`, `protocol`: Protocol used for download (`https`/`ftps` > `http`/`ftp` > `m3u8-native` > `m3u8` > `http-dash-segments` > other > `mms`/`rtsp` > unknown > `f4f`/`f4m`)
+ - `vcodec`, `video_codec`: Video Codec (`av01` > `vp9` > `h265` > `h264` > `vp8` > `h263` > `theora` > other > unknown)
+ - `acodec`, `audio_codec`: Audio Codec (`opus` > `vorbis` > `aac` > `mp4a` > `mp3` > `ac3` > `dts` > other > unknown)
+ - `codec`: Equivalent to `vcodec,acodec`
+ - `vext`, `video_ext`: Video Extension (`mp4` > `flv` > `webm` > other > unknown). If `--prefer-free-formats` is used, `webm` is prefered.
+ - `aext`, `audio_ext`: Video Extension (`m4a` > `aac` > `mp3` > `ogg` > `opus` > `webm` > other > unknown). If `--prefer-free-formats` is used, the order changes to `opus` > `ogg` > `webm` > `m4a` > `mp3` > `aac`.
+ - `ext`, `extension`: Equivalent to `vext,aext`
+ - `filesize`: Exact filesize, if know in advance. This will be unavailable for mu38 and DASH formats.
+ - `filesize_approx`: Approximate filesize calculated  the manifests
+ - `size`, `filesize_estimate`: Exact filesize if available, otherwise approximate filesize
+ - `height`: Height of video
+ - `width`: Width of video
+ - `res`, `dimension`: Video resolution, calculated as the smallest dimension.
+ - `fps`, `framerate`: Framerate of video
+ - `tbr`, `total_bitrate`: Total average bitrate in KBit/s
+ - `vbr`, `video_bitrate`: Average video bitrate in KBit/s
+ - `abr`, `audio_bitrate`: Average audio bitrate in KBit/s
+ - `br`, `bitrate`: Equivalent to using `tbr,vbr,abr`
+ - `samplerate`, `asr`: Audio sample rate in Hz
+
+All fields, unless specified otherwise, are sorted in decending order. To reverse this, prefix the field with a `+`. Eg: `+res` prefers the smallest resolution format. Additionally, you can suffix a prefered value for the fields, seperated by a `:`. Eg: `res:720` prefers larger videos, but no larger than 720p and the smallest video if there are no videos less than 720p. For `codec` and `ext`, you can provide two prefered values, the first for video and the second for audio. Eg: `+codec:avc:m4a` (equivalent to `+vcodec:avc,+acodec:m4a`) sets the video codec preference to `h264` > `h265` > `vp9` > `av01` > `vp8` > `h263` > `theora` and audio codec preference to `mp4a` > `aac` > `vorbis` > `opus` > `mp3` > `ac3` > `dts`. You can also make the sorting prefer the nearest values to the provided by using `~` as the delimiter. Eg: `filesize~1G` prefers the format with filesize closest to 1 GiB.
+
+The fields `has_video`, `has_audio`, `extractor_preference`, `language_preference`, `quality` are always given highest priority in sorting, irrespective of the user-defined order. This behaviour can be changed by using `--force-format-sort`. Apart from these, the default order used by youtube-dlc is: `tbr,filesize,vbr,height,width,protocol,vext,abr,aext,fps,filesize_approx,source_preference,format_id`. Note that the extractors may override this default order (currently no extractor does this), but not the user-provided order.
+
+If your format selector is `worst`, the last item is selected after sorting. This means it will select the format that is worst in all repects. Most of the time, what you actually want is the video with the smallest filesize instead. So it is generally better to use `-f best -S +size,+br,+res,+fps`.
+
+**Tip**: You can use the `-v -F` to see how the formats have been sorted (worst to best).
 
 ## Default Format Selection
 

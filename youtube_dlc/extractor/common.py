@@ -1358,32 +1358,27 @@ class InfoExtractor(object):
     class FormatSort:
         regex = r' *((?P<reverse>\+)?(?P<field>[a-zA-Z0-9_]+)((?P<seperator>[~:])(?P<limit>.*?))?)? *$'
 
-        default = ('hidden', 'has_video', 'extractor_preference', 'language_preference', 'quality',
-                   'dimension', 'fps', 'codec', 'filesize_estimate', 'bitrate', 'asr', 'protocol', 
-                   'source_preference', 'format_id')
-        ''' The default for youtube-dl is:
-        'hidden', 'has_video', 'has_audio', 'extractor_preference', 'language_preference', 'quality',  => priority
-        'tbr', 'filesize', 'vbr', 'height', 'width',  'protocol', 'vext', 'abr', 'aext', 
-        'fps', 'filesize_approx','source_preference', 'format_id' 
-        '''
+        default = ('hidden', 'has_video', 'has_audio', 'extractor', 'lang', 'quality',
+                   'tbr', 'filesize', 'vbr', 'height', 'width',  'protocol', 'vext', 
+                   'abr', 'aext', 'fps', 'filesize_approx','source_preference', 'format_id')
 
         settings = {
             'vcodec': {'type': 'ordered', 'regex': True,
                        'order': ['av01', 'vp9', '(h265|he?vc?)', '(h264|avc)', 'vp8', '(mp4v|h263)', 'theora', '', None, 'none']},
             'acodec': {'type': 'ordered', 'regex': True,
-                       'order': ['opus', 'vorbis', 'aac', 'mp4a', 'mp3', 'e?a?c-?3', 'dts', '', None, 'none']},
+                       'order': ['opus', 'vorbis', 'aac', 'mp?4a?', 'mp3', 'e?a?c-?3', 'dts', '', None, 'none']},
             'protocol': {'type': 'ordered', 'regex': True,
                         'order': ['(ht|f)tps', '(ht|f)tp$', 'm3u8.+', 'm3u8', '.*dash', '', 'mms|rtsp', 'none', 'f4']},
             'vext': {'type': 'ordered', 'field': 'ext',
-                   'order': ('webm', 'mp4', 'flv', '', 'none'),
-                   'order_free': ('mp4', 'webm', 'flv', '', 'none')},
+                     'order': ('mp4', 'flv', 'webm', '', 'none'),  # Why is flv prefered over webm???
+                     'order_free': ('webm', 'mp4', 'flv', '', 'none')},
             'aext': {'type': 'ordered', 'field': 'ext',
-                    'order': ('opus', 'ogg', 'webm', 'm4a', 'mp3', 'aac', '', 'none'),
-                    'order_free': ('m4a', 'aac', 'mp3', 'ogg', 'opus', 'webm', '', 'none')},
+                     'order': ('m4a', 'aac', 'mp3', 'ogg', 'opus', 'webm', '', 'none'),
+                     'order_free': ('opus', 'ogg', 'webm', 'm4a', 'mp3', 'aac', '', 'none')},
             'hidden': {'visible': False, 'forced': True, 'type': 'extractor', 'max': -1000},
             'extractor_preference': {'priority': True, 'type': 'extractor'},
             'has_video': {'priority': True, 'field': 'vcodec', 'type': 'boolean', 'not_in_list': ('none',)},
-            'has_audio': {'field': 'acodec', 'type': 'boolean', 'not_in_list': ('none',)},
+            'has_audio': {'priority': True, 'field': 'acodec', 'type': 'boolean', 'not_in_list': ('none',)},
             'language_preference': {'priority': True, 'convert': 'ignore'},
             'quality': {'priority': True, 'convert': 'float_none'},
             'filesize': {'convert': 'bytes'},
@@ -1398,9 +1393,8 @@ class InfoExtractor(object):
             'asr': {'convert': 'float_none'},
             'source_preference': {'convert': 'ignore'},
             'codec': {'type': 'combined', 'field': ('vcodec', 'acodec')},
-            'bitrate': {'type': 'combined', 'field': ('tbr', 'vbr', 'abr')},
-            'filesize_estimate': {'type': 'combined', 'same_limit': True,
-                                  'field': ('filesize', 'filesize_approx')},
+            'bitrate': {'type': 'combined', 'field': ('tbr', 'vbr', 'abr'), 'same_limit': True}, # equivalent to using tbr?
+            'filesize_estimate': {'type': 'combined', 'same_limit': True, 'field': ('filesize', 'filesize_approx')},
             'extension': {'type': 'combined', 'field': ('vext', 'aext')},
             'dimension': {'type': 'multiple', 'field': ('height', 'width'), 'function': min},  # not named as 'resolution' because such a field exists
             'res': {'type': 'alias', 'field': 'dimension'},
@@ -1592,8 +1586,8 @@ class InfoExtractor(object):
             # Determine missing ext
             if not format.get('ext') and 'url' in format:
                 format['ext'] = determine_ext(format['url'])
-            if format.get('preference') is None and format.get('ext') in ('f4f', 'f4m'):  # Not supported?
-                format['preference'] = -1000
+            # if format.get('preference') is None and format.get('ext') in ('f4f', 'f4m'):  # Not supported?
+            #    format['preference'] = -1000
 
             # Determine missing bitrates
             if format.get('tbr') is None:
