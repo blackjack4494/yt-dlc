@@ -395,7 +395,7 @@ def parseOpts(overrideArguments=None):
         action='store', dest='format', metavar='FORMAT', default=None,
         help='Video format code, see "FORMAT SELECTION" for more details')
     video_format.add_option(
-        '-S', '--format-sort', 
+        '-S', '--format-sort',
         dest='format_sort', default=[],
         action='callback', callback=_comma_separated_values_options_callback, type='str',
         help='Sort the formats by the fields given, see "Sorting Formats" for more details')

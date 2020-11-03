@@ -1359,8 +1359,8 @@ class InfoExtractor(object):
         regex = r' *((?P<reverse>\+)?(?P<field>[a-zA-Z0-9_]+)((?P<seperator>[~:])(?P<limit>.*?))?)? *$'
 
         default = ('hidden', 'has_video', 'has_audio', 'extractor', 'lang', 'quality',
-                   'tbr', 'filesize', 'vbr', 'height', 'width',  'protocol', 'vext', 
-                   'abr', 'aext', 'fps', 'filesize_approx','source_preference', 'format_id')
+                   'tbr', 'filesize', 'vbr', 'height', 'width', 'protocol', 'vext',
+                   'abr', 'aext', 'fps', 'filesize_approx', 'source_preference', 'format_id')
 
         settings = {
             'vcodec': {'type': 'ordered', 'regex': True,
@@ -1368,11 +1368,11 @@ class InfoExtractor(object):
             'acodec': {'type': 'ordered', 'regex': True,
                        'order': ['opus', 'vorbis', 'aac', 'mp?4a?', 'mp3', 'e?a?c-?3', 'dts', '', None, 'none']},
             'protocol': {'type': 'ordered', 'regex': True,
-                        'order': ['(ht|f)tps', '(ht|f)tp$', 'm3u8.+', 'm3u8', '.*dash', '', 'mms|rtsp', 'none', 'f4']},
-            'vext': {'type': 'ordered', 'field': 'ext',
+                         'order': ['(ht|f)tps', '(ht|f)tp$', 'm3u8.+', 'm3u8', '.*dash', '', 'mms|rtsp', 'none', 'f4']},
+            'vext': {'type': 'ordered', 'field': 'video_ext',
                      'order': ('mp4', 'flv', 'webm', '', 'none'),  # Why is flv prefered over webm???
                      'order_free': ('webm', 'mp4', 'flv', '', 'none')},
-            'aext': {'type': 'ordered', 'field': 'ext',
+            'aext': {'type': 'ordered', 'field': 'audio_ext',
                      'order': ('m4a', 'aac', 'mp3', 'ogg', 'opus', 'webm', '', 'none'),
                      'order_free': ('opus', 'ogg', 'webm', 'm4a', 'mp3', 'aac', '', 'none')},
             'hidden': {'visible': False, 'forced': True, 'type': 'extractor', 'max': -1000},
@@ -1393,7 +1393,7 @@ class InfoExtractor(object):
             'asr': {'convert': 'float_none'},
             'source_preference': {'convert': 'ignore'},
             'codec': {'type': 'combined', 'field': ('vcodec', 'acodec')},
-            'bitrate': {'type': 'combined', 'field': ('tbr', 'vbr', 'abr'), 'same_limit': True}, # equivalent to using tbr?
+            'bitrate': {'type': 'combined', 'field': ('tbr', 'vbr', 'abr'), 'same_limit': True},
             'filesize_estimate': {'type': 'combined', 'same_limit': True, 'field': ('filesize', 'filesize_approx')},
             'extension': {'type': 'combined', 'field': ('vext', 'aext')},
             'dimension': {'type': 'multiple', 'field': ('height', 'width'), 'function': min},  # not named as 'resolution' because such a field exists
@@ -1435,7 +1435,7 @@ class InfoExtractor(object):
                 propObj[key] = default
             return propObj[key]
 
-        def _resolve_field_value(self, field, value, convertNone = False):
+        def _resolve_field_value(self, field, value, convertNone=False):
             if value is None:
                 if not convertNone:
                     return None
@@ -1455,9 +1455,9 @@ class InfoExtractor(object):
                 order_list = order_free if order_free and self._use_free_order else self._get_field_setting(field, 'order')
                 use_regex = self._get_field_setting(field, 'regex')
                 list_length = len(order_list)
-                empty_pos = order_list.index('') if '' in order_list else list_length+1  
+                empty_pos = order_list.index('') if '' in order_list else list_length + 1
                 if use_regex and value is not None:
-                    for (i,regex) in enumerate(order_list):
+                    for (i, regex) in enumerate(order_list):
                         if regex and re.match(regex, value):
                             return list_length - i
                     return list_length - empty_pos  # not in list
@@ -1472,7 +1472,7 @@ class InfoExtractor(object):
 
         def evaluate_params(self, params, sort_extractor):
             self._use_free_order = params.get('prefer_free_formats', False)
-            self._sort_user = params.get('format_sort')
+            self._sort_user = params.get('format_sort', [])
             self._sort_extractor = sort_extractor
 
             def add_item(field, reverse, closest, limit_text):
@@ -1492,18 +1492,18 @@ class InfoExtractor(object):
                     self.settings[field] = data
 
             sort_list = (
-                tuple(field for field in self.default if self._get_field_setting(field, 'forced')) + \
-                (tuple() if params.get('format_sort_force')
-                 else tuple(field for field in self.default if self._get_field_setting(field, 'priority')))  + \
-                tuple(self._sort_user) + tuple(sort_extractor) + self.default)
-            
+                tuple(field for field in self.default if self._get_field_setting(field, 'forced'))
+                + (tuple() if params.get('format_sort_force', False)
+                   else tuple(field for field in self.default if self._get_field_setting(field, 'priority')))
+                + tuple(self._sort_user) + tuple(sort_extractor) + self.default)
+
             for item in sort_list:
                 match = re.match(self.regex, item)
                 if match is None:
                     raise ExtractorError('Invalid format sort string "%s" given by extractor' % item)
                 field = match.group('field')
                 if field is None:
-                   continue 
+                    continue
                 if self._get_field_setting(field, 'type') == 'alias':
                     field = self._get_field_setting(field, 'field')
                 reverse = match.group('reverse') is not None
@@ -1517,7 +1517,7 @@ class InfoExtractor(object):
                 fields = self._get_field_setting(field, 'field') if has_multiple_fields else (field,)
                 limits = limit_text.split(":") if has_multiple_limits else (limit_text,) if has_limit else tuple()
                 limit_count = len(limits)
-                for i,f in enumerate(fields):
+                for (i, f) in enumerate(fields):
                     add_item(f, reverse, closest,
                              limits[i] if i < limit_count
                              else limits[0] if has_limit and not has_multiple_limits
@@ -1528,11 +1528,11 @@ class InfoExtractor(object):
             if self._sort_extractor:
                 to_screen('[debug] Sort order given by extractor: %s' % ','.join(self._sort_extractor))
             to_screen('[debug] Formats sorted by: %s' % ', '.join(['%s%s%s' % (
-                    '+' if self._get_field_setting(field, 'reverse') else '', field,
-                    '%s%s(%s)' % ('~' if self._get_field_setting(field, 'closest') else ':',
-                                  self._get_field_setting(field, 'limit_text'),
-                                  self._get_field_setting(field, 'limit'))
-                    if self._get_field_setting(field, 'limit_text') is not None else '')
+                '+' if self._get_field_setting(field, 'reverse') else '', field,
+                '%s%s(%s)' % ('~' if self._get_field_setting(field, 'closest') else ':',
+                              self._get_field_setting(field, 'limit_text'),
+                              self._get_field_setting(field, 'limit'))
+                if self._get_field_setting(field, 'limit_text') is not None else '')
                 for field in self._order if self._get_field_setting(field, 'visible')]))
 
         def _calculate_field_preference_from_value(self, format, field, type, value):
@@ -1543,12 +1543,11 @@ class InfoExtractor(object):
             if type == 'extractor':
                 maximum = self._get_field_setting(field, 'max')
                 if value is None or (maximum is not None and value >= maximum):
-                    value =  0
+                    value = 0
             elif type == 'boolean':
                 in_list = self._get_field_setting(field, 'in_list')
                 not_in_list = self._get_field_setting(field, 'not_in_list')
-                value = 0 if ((in_list is None or value in in_list) and
-                              (not_in_list is None or value not in not_in_list)) else -1
+                value = 0 if ((in_list is None or value in in_list) and (not_in_list is None or value not in not_in_list)) else -1
             elif type == 'ordered':
                 value = self._resolve_field_value(field, value, True)
 
@@ -1560,8 +1559,8 @@ class InfoExtractor(object):
 
             return ((-10, 0) if value is None
                     else (1, value, 0) if not is_num  # if a field has mixed strings and numbers, strings are sorted higher
-                    else (0,-abs(value-limit), value-limit if reverse else limit-value) if closest
-                    else (0, +value, 0) if not reverse and (limit is None or value <= limit)
+                    else (0, -abs(value - limit), value - limit if reverse else limit - value) if closest
+                    else (0, value, 0) if not reverse and (limit is None or value <= limit)
                     else (0, -value, 0) if limit is None or (reverse and value == limit) or value > limit
                     else (-1, value, 0))
 
@@ -1569,14 +1568,19 @@ class InfoExtractor(object):
             type = self._get_field_setting(field, 'type')  # extractor, boolean, ordered, field, multiple
             get_value = lambda f: format.get(self._get_field_setting(f, 'field'))
             if type == 'multiple':
+                type = 'field'  # Only 'field' is allowed in multiple for now
                 actual_fields = self._get_field_setting(field, 'field')
+
                 def wrapped_function(values):
                     values = tuple(filter(lambda x: x is not None, values))
-                    return self._get_field_setting(field, 'function')(*values) if values else None
+                    return (self._get_field_setting(field, 'function')(*values) if len(values) > 1
+                            else values[0] if values
+                            else None)
+
                 value = wrapped_function((get_value(f) for f in actual_fields))
             else:
                 value = get_value(field)
-            return self._calculate_field_preference_from_value(format, field, 'field', value)  # multiple only works with type 'field'
+            return self._calculate_field_preference_from_value(format, field, type, value)
 
         def calculate_preference(self, format):
             # Determine missing protocol
@@ -1586,26 +1590,32 @@ class InfoExtractor(object):
             # Determine missing ext
             if not format.get('ext') and 'url' in format:
                 format['ext'] = determine_ext(format['url'])
+            if format.get('vcodec') == 'none':
+                format['audio_ext'] = format['ext']
+                format['video_ext'] = 'none'
+            else:
+                format['video_ext'] = format['ext']
+                format['audio_ext'] = 'none'
             # if format.get('preference') is None and format.get('ext') in ('f4f', 'f4m'):  # Not supported?
             #    format['preference'] = -1000
 
             # Determine missing bitrates
             if format.get('tbr') is None:
-                if format.get('vbr') is not None or format.get('abr') is not None:
-                    format['tbr'] = format.get('vbr',0) + format.get('abr',0)
+                if format.get('vbr') is not None and format.get('abr') is not None:
+                    format['tbr'] = format.get('vbr', 0) + format.get('abr', 0)
             else:
                 if format.get('vcodec') != "none" and format.get('vbr') is None:
-                    format['vbr'] = format.get('tbr') - format.get('abr',0)
+                    format['vbr'] = format.get('tbr') - format.get('abr', 0)
                 if format.get('acodec') != "none" and format.get('abr') is None:
-                    format['abr'] = format.get('tbr') - format.get('vbr',0)
+                    format['abr'] = format.get('tbr') - format.get('vbr', 0)
 
             return tuple(self._calculate_field_preference(format, field) for field in self._order)
 
-    def _sort_formats(self, formats, sort_extractor = []):
+    def _sort_formats(self, formats, field_preference=[]):
         if not formats:
             raise ExtractorError('No video formats found')
         format_sort = self.FormatSort()  # params and to_screen are taken from the downloader
-        format_sort.evaluate_params(self._downloader.params, sort_extractor)
+        format_sort.evaluate_params(self._downloader.params, field_preference)
         if self._downloader.params.get('verbose', False):
             format_sort.print_verbose_info(self._downloader.to_screen)
         formats.sort(key=lambda f: format_sort.calculate_preference(f))
