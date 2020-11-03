@@ -263,7 +263,6 @@ class NiconicoIE(InfoExtractor):
             'data': json.dumps(session_response['data']),
             'headers': heartbeat_headers,
             'interval': session_api_data['heartbeat_lifetime'] / 2000,
-            'method': 'POST',
             'url': heartbeat_url,
         }
 

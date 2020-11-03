@@ -18,11 +18,12 @@ class Heartbeat(object):
         data = params.get('data')
         if isinstance(data, compat_str):
             data = data.encode()
+        # Python 2 does not allow us to set HTTP method
+        # it is POST if Request has data, otherwise GET
         self.request = sanitized_Request(
             params.get('url'),
             data=data,
-            headers=params.get('headers', {}),
-            method=params.get('method')
+            headers=params.get('headers', {})
         )
 
         self.interval = params.get('interval', 30)
@@ -49,7 +50,7 @@ class Heartbeat(object):
                     self.ydl.to_screen('[heartbeat]')
                 self.ydl.urlopen(self.request)
             except Exception:
-                self.ydl.report_warning("[heartbeat] Heartbeat failed")
+                self.ydl.report_warning("Heartbeat failed")
                 if self.ydl.params.get('verbose'):
                     self.ydl.to_stderr(encode_compat_str(traceback.format_exc()))
             self.parent_thread.join(self.interval)
