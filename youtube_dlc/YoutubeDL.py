@@ -58,6 +58,7 @@ from .utils import (
     expand_path,
     ExtractorError,
     format_bytes,
+    format_field,
     formatSeconds,
     GeoRestrictedError,
     int_or_none,
@@ -280,6 +281,7 @@ class YoutubeDL(object):
                        Actual sleep time will be a random float from range
                        [sleep_interval; max_sleep_interval].
     listformats:       Print an overview of available video formats and exit.
+    listformats_table: Present the output of listformats in a more tabular form
     list_thumbnails:   Print a table of all thumbnails and exit.
     match_filter:      A function that gets called with the info_dict of
                        every video.
@@ -2287,20 +2289,59 @@ class YoutubeDL(object):
                 res += ', '
             res += '~' + format_bytes(fdict['filesize_approx'])
         return res
+ 
+    def _format_note_table(self, f):
+        def join_fields(*vargs):
+            return ', '.join((val for val in vargs if val != ''))
+
+        return join_fields(
+            'UNSUPPORTED' if f.get('ext') in ('f4f', 'f4m') else '',
+            format_field(f, 'language', '[%s]'), 
+            format_field(f, 'format_note'), 
+            format_field(f, 'container', ignore=(None, f.get('ext'))), 
+            format_field(f, 'asr', '%5dHz'))
 
     def list_formats(self, info_dict):
         formats = info_dict.get('formats', [info_dict])
-        table = [
-            [f['format_id'], f['ext'], self.format_resolution(f), self._format_note(f)]
-            for f in formats
-            if f.get('preference') is None or f['preference'] >= -1000]
+        new_format = self.params.get('listformats_table', False)
+        if new_format:
+            table = [
+                [
+                    format_field(f, 'format_id'), 
+                    format_field(f, 'ext'),
+                    self.format_resolution(f),
+                    format_field(f, 'fps', '%d'), 
+                    '|',
+                    format_field(f, 'filesize', ' %s', func=format_bytes) + format_field(f, 'filesize_approx', '~%s', func=format_bytes),
+                    format_field(f, 'tbr', '%4dk'),
+                    f.get('protocol').replace('http_dash_segments', 'dash').replace("native", "n"),
+                    '|',
+                    format_field(f, 'vcodec', default='unknown').replace('none', ''),
+                    format_field(f, 'vbr', '%4dk'),
+                    format_field(f, 'acodec', default='unknown').replace('none', ''),
+                    format_field(f, 'abr', '%3dk'),
+                    format_field(f, 'asr', '%5dHz'),
+                    self._format_note_table(f)]
+                for f in formats
+                if f.get('preference') is None or f['preference'] >= -1000]
+            header_line = ['ID', 'EXT', 'RESOLUTION', 'FPS', '|', ' FILESIZE', '  TBR', 'PROTO', 
+                           '|', 'VIDEO CODEC', '  VBR', 'AUDIO CODEC', ' ABR', ' ASR', 'NOTE']
+        else:
+            table = [
+                [
+                    format_field(f, 'format_id'),
+                    format_field(f, 'ext'),
+                    self.format_resolution(f),
+                    self._format_note(f)]
+                for f in formats
+                if f.get('preference') is None or f['preference'] >= -1000]
+            header_line = ['format code', 'extension', 'resolution', 'note']
+
         if len(formats) > 1:
             table[-1][-1] += (' ' if table[-1][-1] else '') + '(best)'
-
-        header_line = ['format code', 'extension', 'resolution', 'note']
         self.to_screen(
             '[info] Available formats for %s:\n%s' %
-            (info_dict['id'], render_table(header_line, table)))
+            (info_dict['id'], render_table(header_line, table, new_format)))
 
     def list_thumbnails(self, info_dict):
         thumbnails = info_dict.get('thumbnails')

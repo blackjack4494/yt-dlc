@@ -411,6 +411,10 @@ def parseOpts(overrideArguments=None):
         action='store_true', dest='listformats',
         help='List all available formats of requested videos')
     video_format.add_option(
+        '--list-formats-as-table',
+        action='store_true', dest='listformats_table', default=False,
+        help='Present the output of -F in a more tabular form')
+    video_format.add_option(
         '--youtube-include-dash-manifest',
         action='store_true', dest='youtube_include_dash_manifest', default=True,
         help=optparse.SUPPRESS_HELP)
