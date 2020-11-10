@@ -2903,11 +2903,12 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                     video_id = try_get(item_video, lambda x: x['videoId'], compat_str)
                     entry = {
                         '_type': 'url',
-                        'ie_key': 'Youtube',
-                        'id': video_id,
-                        'url': video_id,
                         'duration': int_or_none(try_get(item_video, lambda x: x['lengthSeconds'], compat_str)),
-                        'title': try_get(item_video, lambda x: x['title']['runs'][0]['text'], compat_str)
+                        'id': video_id,
+                        'ie_key': 'Youtube',
+                        # 'thumbnails': try_get(item_video, lambda x: x['thumbnail']['thumbnails'], list),
+                        'title': try_get(item_video, lambda x: x['title']['runs'][0]['text'], compat_str),
+                        'url': video_id
                     }
                     entries.append(entry)
                 item_continue = try_get(item, lambda x: x['continuationItemRenderer'], dict)
@@ -2919,24 +2920,27 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                             'client': {
                                 'clientName': 'WEB',
                                 'clientVersion': '2.20201021.03.00',
-                                'mainAppWebInfo': {
-                                    'graftUrl': 'https://www.youtube.com/playlist?list={}'.format(playlist_id)
-                                }
                             }
                         },
                         'continuation': continuation_token
                     }
                     response = self._download_json(
                         'https://www.youtube.com/youtubei/v1/browse?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8',
-                        video_id='playlist page %s' % playlist_page,
-                        note='Downloading page %s' % playlist_page,
                         data=json.dumps(request_data).encode('utf8'),
                         errnote='Unable to download playlist page', fatal=False,
-                        headers={'Content-Type': 'application/json'})
+                        headers={'Content-Type': 'application/json'},
+                        note='Downloading page %s' % playlist_page,
+                        video_id='playlist page %s' % playlist_page)
                     playlist_items_new = try_get(response, lambda x: x['onResponseReceivedActions'][0]['appendContinuationItemsAction']['continuationItems'], list)
                     if playlist_items_new:
                         playlist_items.extend(playlist_items_new)
-            playlist = self.playlist_result(entries, playlist_id=playlist_id)
+            playlist_title = try_get(yt_initial, lambda x: x['microformat']['microformatDataRenderer']['title'], compat_str)
+            playlist_description = try_get(yt_initial, lambda x: x['microformat']['microformatDataRenderer']['description'], compat_str)
+            playlist = self.playlist_result(
+                entries,
+                playlist_id=playlist_id,
+                playlist_title=playlist_title,
+                playlist_description=playlist_description)
             has_videos = bool(entries)
             return has_videos, playlist
 
