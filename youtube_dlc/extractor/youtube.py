@@ -2894,6 +2894,7 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
         yt_initial = self._get_yt_initial_data('', page)
         if yt_initial:
             playlist_items = try_get(yt_initial, lambda x: x['contents']['twoColumnBrowseResultsRenderer']['tabs'][0]['tabRenderer']['content']['sectionListRenderer']['contents'][0]['itemSectionRenderer']['contents'][0]['playlistVideoListRenderer']['contents'], list)
+            video_ids = []
             entries = []
             playlist_page = 1
             api_key = self._search_regex(
@@ -2908,6 +2909,10 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                 item_video = try_get(item, lambda x: x['playlistVideoRenderer'], dict)
                 if item_video:
                     video_id = try_get(item_video, lambda x: x['videoId'], compat_str)
+                    if video_id in video_ids:
+                        continue
+                    else:
+                        video_ids.append(video_id)
                     entry = {
                         '_type': 'url',
                         'duration': int_or_none(try_get(item_video, lambda x: x['lengthSeconds'], compat_str)),
@@ -2927,7 +2932,7 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                         'context': {
                             'client': {
                                 'clientName': 'WEB',
-                                'clientVersion': api_client_version,
+                                'clientVersion': api_client_version
                             }
                         },
                         'continuation': continuation_token
@@ -2941,7 +2946,11 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                         video_id=playlist_id)
                     playlist_items_new = try_get(response, lambda x: x['onResponseReceivedActions'][0]['appendContinuationItemsAction']['continuationItems'], list)
                     if playlist_items_new:
-                        playlist_items.extend(playlist_items_new)
+                        # load more pages until we get a page of all videos already in the playlist (some playlists loop)
+                        video_ids_new = [try_get(i, lambda x: x['playlistVideoRenderer']['videoId'], compat_str) for i in playlist_items_new]      
+                        video_ids_new = [i for i in video_ids_new if i and i not in video_ids]
+                        if video_ids_new:
+                            playlist_items.extend(playlist_items_new)
 
             playlist_title = try_get(yt_initial, lambda x: x['microformat']['microformatDataRenderer']['title'], compat_str)
             playlist_description = try_get(yt_initial, lambda x: x['microformat']['microformatDataRenderer']['description'], compat_str)
