@@ -2896,6 +2896,12 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
             playlist_items = try_get(yt_initial, lambda x: x['contents']['twoColumnBrowseResultsRenderer']['tabs'][0]['tabRenderer']['content']['sectionListRenderer']['contents'][0]['itemSectionRenderer']['contents'][0]['playlistVideoListRenderer']['contents'], list)
             entries = []
             playlist_page = 1
+            api_key = self._search_regex(
+                r'"INNERTUBE_API_KEY":"([^"]+)"',
+                page, 'api key', default="AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8", fatal=False)
+            api_client_version = self._search_regex(
+                r'"INNERTUBE_CONTEXT_CLIENT_VERSION":"([^"]+)"',
+                page, 'client version', fatal=False)
             while playlist_items:
                 item = playlist_items.pop(0)
                 item_video = try_get(item, lambda x: x['playlistVideoRenderer'], dict)
@@ -2919,18 +2925,18 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                         'context': {
                             'client': {
                                 'clientName': 'WEB',
-                                'clientVersion': '2.20201021.03.00',
+                                'clientVersion': api_client_version,
                             }
                         },
                         'continuation': continuation_token
                     }
                     response = self._download_json(
-                        'https://www.youtube.com/youtubei/v1/browse?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8',
+                        'https://www.youtube.com/youtubei/v1/browse?key=%s' % api_key,
                         data=json.dumps(request_data).encode('utf8'),
                         errnote='Unable to download playlist page', fatal=False,
                         headers={'Content-Type': 'application/json'},
                         note='Downloading page %s' % playlist_page,
-                        video_id='playlist page %s' % playlist_page)
+                        video_id=playlist_id)
                     playlist_items_new = try_get(response, lambda x: x['onResponseReceivedActions'][0]['appendContinuationItemsAction']['continuationItems'], list)
                     if playlist_items_new:
                         playlist_items.extend(playlist_items_new)
