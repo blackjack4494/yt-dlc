@@ -2904,6 +2904,7 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                 page, 'client version', fatal=False)
             while playlist_items:
                 item = playlist_items.pop(0)
+
                 item_video = try_get(item, lambda x: x['playlistVideoRenderer'], dict)
                 if item_video:
                     video_id = try_get(item_video, lambda x: x['videoId'], compat_str)
@@ -2917,6 +2918,7 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                         'url': video_id
                     }
                     entries.append(entry)
+
                 item_continue = try_get(item, lambda x: x['continuationItemRenderer'], dict)
                 if item_continue:
                     playlist_page += 1
@@ -2940,6 +2942,7 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                     playlist_items_new = try_get(response, lambda x: x['onResponseReceivedActions'][0]['appendContinuationItemsAction']['continuationItems'], list)
                     if playlist_items_new:
                         playlist_items.extend(playlist_items_new)
+
             playlist_title = try_get(yt_initial, lambda x: x['microformat']['microformatDataRenderer']['title'], compat_str)
             playlist_description = try_get(yt_initial, lambda x: x['microformat']['microformatDataRenderer']['description'], compat_str)
             playlist = self.playlist_result(
