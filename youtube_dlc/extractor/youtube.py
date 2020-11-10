@@ -2891,6 +2891,55 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
         url = self._TEMPLATE_URL % playlist_id
         page = self._download_webpage(url, playlist_id)
 
+        yt_initial = self._get_yt_initial_data('', page)
+        if yt_initial:
+            playlist_items = try_get(yt_initial, lambda x: x['contents']['twoColumnBrowseResultsRenderer']['tabs'][0]['tabRenderer']['content']['sectionListRenderer']['contents'][0]['itemSectionRenderer']['contents'][0]['playlistVideoListRenderer']['contents'], list)
+            entries = []
+            playlist_page = 1
+            while playlist_items:
+                item = playlist_items.pop(0)
+                item_video = try_get(item, lambda x: x['playlistVideoRenderer'], dict)
+                if item_video:
+                    video_id = try_get(item_video, lambda x: x['videoId'], compat_str)
+                    entry = {
+                        '_type': 'url',
+                        'ie_key': 'Youtube',
+                        'id': video_id,
+                        'url': video_id,
+                        'duration': int_or_none(try_get(item_video, lambda x: x['lengthSeconds'], compat_str)),
+                        'title': try_get(item_video, lambda x: x['title']['runs'][0]['text'], compat_str)
+                    }
+                    entries.append(entry)
+                item_continue = try_get(item, lambda x: x['continuationItemRenderer'], dict)
+                if item_continue:
+                    playlist_page += 1
+                    continuation_token = try_get(item_continue, lambda x: x['continuationEndpoint']['continuationCommand']['token'], compat_str)
+                    request_data = {
+                        'context': {
+                            'client': {
+                                'clientName': 'WEB',
+                                'clientVersion': '2.20201021.03.00',
+                                'mainAppWebInfo': {
+                                    'graftUrl': 'https://www.youtube.com/playlist?list={}'.format(playlist_id)
+                                }
+                            }
+                        },
+                        'continuation': continuation_token
+                    }
+                    response = self._download_json(
+                        'https://www.youtube.com/youtubei/v1/browse?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8',
+                        video_id='playlist page %s' % playlist_page,
+                        note='Downloading page %s' % playlist_page,
+                        data=json.dumps(request_data).encode('utf8'),
+                        errnote='Unable to download playlist page', fatal=False,
+                        headers={'Content-Type': 'application/json'})
+                    playlist_items_new = try_get(response, lambda x: x['onResponseReceivedActions'][0]['appendContinuationItemsAction']['continuationItems'], list)
+                    if playlist_items_new:
+                        playlist_items.extend(playlist_items_new)
+            playlist = self.playlist_result(entries, playlist_id=playlist_id)
+            has_videos = bool(entries)
+            return has_videos, playlist
+
         # the yt-alert-message now has tabindex attribute (see https://github.com/ytdl-org/youtube-dl/issues/11604)
         for match in re.findall(r'<div class="yt-alert-message"[^>]*>([^<]+)</div>', page):
             match = match.strip()
