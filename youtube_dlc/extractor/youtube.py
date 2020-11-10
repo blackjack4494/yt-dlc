@@ -2891,26 +2891,26 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
         url = self._TEMPLATE_URL % playlist_id
         page = self._download_webpage(url, playlist_id)
 
-        # the yt-alert-message now has tabindex attribute (see https://github.com/ytdl-org/youtube-dl/issues/11604)
-        for match in re.findall(r'<div class="yt-alert-message"[^>]*>([^<]+)</div>', page):
-            match = match.strip()
-            # Check if the playlist exists or is private
-            mobj = re.match(r'[^<]*(?:The|This) playlist (?P<reason>does not exist|is private)[^<]*', match)
-            if mobj:
-                reason = mobj.group('reason')
-                message = 'This playlist %s' % reason
-                if 'private' in reason:
-                    message += ', use --username or --netrc to access it'
-                message += '.'
-                raise ExtractorError(message, expected=True)
-            elif re.match(r'[^<]*Invalid parameters[^<]*', match):
-                raise ExtractorError(
-                    'Invalid parameters. Maybe URL is incorrect.',
-                    expected=True)
-            elif re.match(r'[^<]*Choose your language[^<]*', match):
-                continue
-            else:
-                self.report_warning('Youtube gives an alert message: ' + match)
+        prefix_reg = r'"alerts":\[\{"alertRenderer":.*?'
+        noexist_private_reg = r'(?:The|This) playlist (?P<reason>does not exist|is private)'
+        mobj = re.search(prefix_reg + noexist_private_reg, page)
+        mobj_other_reason = re.search(prefix_reg + r'"runs":\[\{"text":"(?P<message>[^"]+)', page)
+        if mobj:
+            reason = mobj.group('reason')
+            message = 'This playlist %s' % reason
+            if 'private' in reason:
+                message += ', use --username or --netrc to access it'
+            message += '.'
+            raise ExtractorError(message, expected=True)
+        elif re.search(prefix_reg + r'Invalid parameters', page):
+            raise ExtractorError(
+                'Invalid parameters. Maybe URL is incorrect.',
+                expected=True)
+        elif re.search(prefix_reg + r'Choose your language', page):
+            pass
+        elif mobj_other_reason:
+            message = mobj_other_reason.group("message")
+            self.report_warning('Youtube gives an alert message: ' + message)
 
         playlist_title = self._html_search_regex(
             r'(?s)<h1 class="pl-header-title[^"]*"[^>]*>\s*(.*?)\s*</h1>',
