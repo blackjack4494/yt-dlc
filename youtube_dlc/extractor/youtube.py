@@ -36,6 +36,7 @@ from ..utils import (
     get_element_by_attribute,
     get_element_by_id,
     int_or_none,
+    js_to_json,
     mimetype2ext,
     orderedSet,
     parse_codecs,
@@ -2899,10 +2900,10 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
             api_key = self._search_regex(
                 r'"INNERTUBE_API_KEY":"([^"]+)"',
                 page, 'api key', default="AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8", fatal=False)
-            api_client_context_string = self._search_regex(
-                r'ytcfg\.set\({"INNERTUBE_CONTEXT":(.*?)}\)',
-                page, 'client context', fatal=False)
-            api_client_context = self._parse_json(api_client_context_string, 'client context')
+            ytcfg_string = self._search_regex(
+                r'ytcfg\.set\(({.*?"INNERTUBE_CONTEXT".*?})\);',
+                page, 'client context')
+            api_client_context = self._parse_json(ytcfg_string, 'client context', transform_source=js_to_json)['INNERTUBE_CONTEXT']
             while playlist_items:
                 item = playlist_items.pop(0)
 
