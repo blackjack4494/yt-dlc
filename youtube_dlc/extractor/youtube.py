@@ -2894,25 +2894,23 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
         yt_initial = self._get_yt_initial_data('', page)
         if yt_initial:
             playlist_items = try_get(yt_initial, lambda x: x['contents']['twoColumnBrowseResultsRenderer']['tabs'][0]['tabRenderer']['content']['sectionListRenderer']['contents'][0]['itemSectionRenderer']['contents'][0]['playlistVideoListRenderer']['contents'], list)
-            video_ids = []
             entries = []
             playlist_page = 1
             api_key = self._search_regex(
                 r'"INNERTUBE_API_KEY":"([^"]+)"',
                 page, 'api key', default="AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8", fatal=False)
-            api_client_version = self._search_regex(
-                r'"INNERTUBE_CONTEXT_CLIENT_VERSION":"([^"]+)"',
-                page, 'client version', fatal=False)
+            api_client_context_string = self._search_regex(
+                r'ytcfg\.set\({"INNERTUBE_CONTEXT":(.*?)}\)',
+                page, 'client context', fatal=False)
+            api_client_context = self._parse_json(api_client_context_string, 'client context')
             while playlist_items:
                 item = playlist_items.pop(0)
 
                 item_video = try_get(item, lambda x: x['playlistVideoRenderer'], dict)
                 if item_video:
                     video_id = try_get(item_video, lambda x: x['videoId'], compat_str)
-                    if video_id in video_ids:
+                    if not video_id:
                         continue
-                    else:
-                        video_ids.append(video_id)
                     entry = {
                         '_type': 'url',
                         'duration': int_or_none(try_get(item_video, lambda x: x['lengthSeconds'], compat_str)),
@@ -2929,12 +2927,7 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                     playlist_page += 1
                     continuation_token = try_get(item_continue, lambda x: x['continuationEndpoint']['continuationCommand']['token'], compat_str)
                     request_data = {
-                        'context': {
-                            'client': {
-                                'clientName': 'WEB',
-                                'clientVersion': api_client_version
-                            }
-                        },
+                        'context': api_client_context,
                         'continuation': continuation_token
                     }
                     response = self._download_json(
@@ -2946,11 +2939,7 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                         video_id=playlist_id)
                     playlist_items_new = try_get(response, lambda x: x['onResponseReceivedActions'][0]['appendContinuationItemsAction']['continuationItems'], list)
                     if playlist_items_new:
-                        # load more pages until we get a page of all videos already in the playlist (some playlists loop)
-                        video_ids_new = [try_get(i, lambda x: x['playlistVideoRenderer']['videoId'], compat_str) for i in playlist_items_new]      
-                        video_ids_new = [i for i in video_ids_new if i and i not in video_ids]
-                        if video_ids_new:
-                            playlist_items.extend(playlist_items_new)
+                        playlist_items.extend(playlist_items_new)
 
             playlist_title = try_get(yt_initial, lambda x: x['microformat']['microformatDataRenderer']['title'], compat_str)
             playlist_description = try_get(yt_initial, lambda x: x['microformat']['microformatDataRenderer']['description'], compat_str)
