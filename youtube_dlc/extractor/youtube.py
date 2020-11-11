@@ -2949,6 +2949,15 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                 playlist_id=playlist_id,
                 playlist_title=playlist_title,
                 playlist_description=playlist_description)
+            uploader_info = try_get(yt_initial, lambda x: x['sidebar']['playlistSidebarRenderer']['items'][1]['playlistSidebarSecondaryInfoRenderer']['videoOwner']['videoOwnerRenderer'], dict)
+            if uploader_info:
+                playlist.update({
+                    'uploader': try_get(uploader_info, lambda x: x['title']['runs'][0]['text'], compat_str),
+                    'uploader_id': try_get(uploader_info, lambda x: x['navigationEndpoint']['browseEndpoint']['browseId']),
+                    'uploader_url': 'https://youtube.com{}'.format(try_get(uploader_info, lambda x: x['navigationEndpoint']['browseEndpoint']['canonicalBaseUrl'], compat_str))
+                })
+            if playlist_id.startswith(self._YTM_PLAYLIST_PREFIX):
+                playlist.update(self._YTM_CHANNEL_INFO)
             has_videos = bool(entries)
             return has_videos, playlist
 
@@ -2973,44 +2982,14 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
             else:
                 self.report_warning('Youtube gives an alert message: ' + match)
 
-        playlist_title = self._html_search_regex(
-            r'(?s)<h1 class="pl-header-title[^"]*"[^>]*>\s*(.*?)\s*</h1>',
-            page, 'title', default=None)
-
-        _UPLOADER_BASE = r'class=["\']pl-header-details[^>]+>\s*<li>\s*<a[^>]+\bhref='
-        uploader = self._html_search_regex(
-            r'%s["\']/(?:user|channel)/[^>]+>([^<]+)' % _UPLOADER_BASE,
-            page, 'uploader', default=None)
-        mobj = re.search(
-            r'%s(["\'])(?P<path>/(?:user|channel)/(?P<uploader_id>.+?))\1' % _UPLOADER_BASE,
-            page)
-        if mobj:
-            uploader_id = mobj.group('uploader_id')
-            uploader_url = compat_urlparse.urljoin(url, mobj.group('path'))
-        else:
-            uploader_id = uploader_url = None
-
-        has_videos = True
-
-        if not playlist_title:
-            try:
-                # Some playlist URLs don't actually serve a playlist (e.g.
-                # https://www.youtube.com/watch?v=FqZTN594JQw&list=PLMYEtVRpaqY00V9W81Cwmzp6N6vZqfUKD4)
-                next(self._entries(page, playlist_id))
-            except StopIteration:
-                has_videos = False
-
-        playlist = self.playlist_result(
-            self._entries(page, playlist_id), playlist_id, playlist_title)
-        playlist.update({
-            'uploader': uploader,
-            'uploader_id': uploader_id,
-            'uploader_url': uploader_url,
-        })
-        if playlist_id.startswith(self._YTM_PLAYLIST_PREFIX):
-            playlist.update(self._YTM_CHANNEL_INFO)
-
-        return has_videos, playlist
+        # example links don't work
+        # if not playlist_title:
+        #     try:
+        #         # Some playlist URLs don't actually serve a playlist (e.g.
+        #         # https://www.youtube.com/watch?v=FqZTN594JQw&list=PLMYEtVRpaqY00V9W81Cwmzp6N6vZqfUKD4)
+        #         next(self._entries(page, playlist_id))
+        #     except StopIteration:
+        #         has_videos = False
 
     def _check_download_just_video(self, url, playlist_id):
         # Check if it's a video-specific URL
