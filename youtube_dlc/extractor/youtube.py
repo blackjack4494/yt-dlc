@@ -2956,8 +2956,14 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                     'uploader_id': try_get(uploader_info, lambda x: x['navigationEndpoint']['browseEndpoint']['browseId']),
                     'uploader_url': 'https://youtube.com{}'.format(try_get(uploader_info, lambda x: x['navigationEndpoint']['browseEndpoint']['canonicalBaseUrl'], compat_str))
                 })
+            playlist_stats = try_get(yt_initial, lambda x: x['sidebar']['playlistSidebarRenderer']['items'][0]['playlistSidebarPrimaryInfoRenderer']['stats'], list)
+            if playlist_stats:
+                views_str = try_get(playlist_stats, lambda x: x[1]['simpleText'], compat_str)
+                if views_str.endswith('views'):
+                    playlist.update({'view_count': int_or_none( "".join(re.findall(r'\d+', views_str)))})
             if playlist_id.startswith(self._YTM_PLAYLIST_PREFIX):
                 playlist.update(self._YTM_CHANNEL_INFO)
+
             has_videos = bool(entries)
             return has_videos, playlist
 
