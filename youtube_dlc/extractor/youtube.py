@@ -2949,6 +2949,7 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                 playlist_id=playlist_id,
                 playlist_title=playlist_title,
                 playlist_description=playlist_description)
+
             uploader_info = try_get(yt_initial, lambda x: x['sidebar']['playlistSidebarRenderer']['items'][1]['playlistSidebarSecondaryInfoRenderer']['videoOwner']['videoOwnerRenderer'], dict)
             if uploader_info:
                 playlist.update({
@@ -2956,17 +2957,22 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
                     'uploader_id': try_get(uploader_info, lambda x: x['navigationEndpoint']['browseEndpoint']['browseId']),
                     'uploader_url': 'https://youtube.com{}'.format(try_get(uploader_info, lambda x: x['navigationEndpoint']['browseEndpoint']['canonicalBaseUrl'], compat_str))
                 })
+            if playlist_id.startswith(self._YTM_PLAYLIST_PREFIX):
+                playlist.update(self._YTM_CHANNEL_INFO)
+
             playlist_stats = try_get(yt_initial, lambda x: x['sidebar']['playlistSidebarRenderer']['items'][0]['playlistSidebarPrimaryInfoRenderer']['stats'], list)
             if playlist_stats:
                 views_str = try_get(playlist_stats, lambda x: x[1]['simpleText'], compat_str)
                 if views_str.endswith('views'):
-                    playlist.update({'view_count': int_or_none( "".join(re.findall(r'\d+', views_str)))})
-            if playlist_id.startswith(self._YTM_PLAYLIST_PREFIX):
-                playlist.update(self._YTM_CHANNEL_INFO)
+                    playlist['view_count'] = int_or_none("".join(re.findall(r'\d+', views_str)))
+                last_updated_str = try_get(playlist_stats, lambda x: x[2]['runs'][1]['text'], compat_str)
+                if last_updated_str:
+                    playlist['updated_date'] = unified_strdate(last_updated_str)
 
             has_videos = bool(entries)
             return has_videos, playlist
 
+        # todo: fix this
         # the yt-alert-message now has tabindex attribute (see https://github.com/ytdl-org/youtube-dl/issues/11604)
         for match in re.findall(r'<div class="yt-alert-message"[^>]*>([^<]+)</div>', page):
             match = match.strip()
