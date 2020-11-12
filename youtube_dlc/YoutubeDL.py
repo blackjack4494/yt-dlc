@@ -2204,15 +2204,28 @@ class YoutubeDL(object):
         self.archive.add(vid_id)
 
     def url_archive_precheck(self, url):
-        # Check YouTube single video downloads in archive before any web page access
-        if re.match("^https://[a-zA-Z.]*youtube.com/", url):
-            temp_id = url.split("?v=")
+        # Check single video downloads in archive (if possible) before any web page access
+        ie_key = None
+        if re.match("^https://[0-9a-zA-Z.]*bitchute.com/video/", url):
+            temp_id = url.split("/video/")
             if len(temp_id) == 2:
+                ie_key = "bitchute"
                 temp_id = temp_id[1].split("&")[0]
-                temp_info_dict = {'id': temp_id, 'ie_key': "youtube"}
-                if self.in_download_archive(temp_info_dict):
-                    reason = "[download] [youtube] ID %s has already been recorded in archive" % temp_id
-                    return reason
+                temp_id = temp_id.split("/")[0]
+                temp_id = temp_id.split("?")[0]
+        elif re.match("^https://[0-9a-zA-Z.]*youtube.com/", url):
+            temp_id = url.split("?v=")
+            if len(temp_id) == 1:
+                temp_id = url.split("&v=")
+            if len(temp_id) == 2:
+                ie_key = "youtube"
+                temp_id = temp_id[1].split("&")[0]
+        # ie_key should only be set if an archive check should be done
+        if ie_key is not None:
+            temp_info_dict = {'id': temp_id, 'ie_key': ie_key}
+            if self.in_download_archive(temp_info_dict):
+                reason = "[download] [%s] ID %s has already been recorded in archive" % (ie_key, temp_id)
+                return reason
         return None
 
     @staticmethod
