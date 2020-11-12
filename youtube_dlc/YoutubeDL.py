@@ -827,6 +827,10 @@ class YoutubeDL(object):
                                     'and will probably not work.')
 
             try:
+                reason = self.url_archive_precheck(url)  # Avoid downloading if we can check against the archive beforehand
+                if reason is not None:
+                    self.to_screen(reason)
+                    break
                 ie_result = ie.extract(url)
                 if ie_result is None:  # Finished already (backwards compatibility; listformats and friends should be moved here)
                     break
@@ -2198,6 +2202,18 @@ class YoutubeDL(object):
         with locked_file(fn, 'a', encoding='utf-8') as archive_file:
             archive_file.write(vid_id + '\n')
         self.archive.add(vid_id)
+
+    def url_archive_precheck(self, url):
+        # Check YouTube single video downloads in archive before any web page access
+        if re.match("^https://[a-zA-Z.]*youtube.com/", url):
+            temp_id = url.split("?v=")
+            if len(temp_id) == 2:
+                temp_id = temp_id[1].split("&")[0]
+                temp_info_dict = {'id': temp_id, 'ie_key': "youtube"}
+                if self.in_download_archive(temp_info_dict):
+                    reason = "[download] [youtube] ID %s has already been recorded in archive" % temp_id
+                    return reason
+        return None
 
     @staticmethod
     def format_resolution(format, default='unknown'):
