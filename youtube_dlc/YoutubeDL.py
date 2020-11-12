@@ -827,7 +827,7 @@ class YoutubeDL(object):
                                     'and will probably not work.')
 
             try:
-                reason = self.url_archive_precheck(url)  # Avoid downloading if we can check against the archive beforehand
+                reason = self.url_archive_precheck(url, ie.ie_key())  # Avoid downloading if we can check against the archive beforehand
                 if reason is not None:
                     self.to_screen(reason)
                     break
@@ -2203,29 +2203,28 @@ class YoutubeDL(object):
             archive_file.write(vid_id + '\n')
         self.archive.add(vid_id)
 
-    def url_archive_precheck(self, url):
+    def url_archive_precheck(self, url, ie_key):
         # Check single video downloads in archive (if possible) before any web page access
-        ie_key = None
-        if re.match("^https://[0-9a-zA-Z.]*bitchute.com/video/", url):
+        ie_key = ie_key.lower()
+        if ie_key == "bitchute" and re.match("^https://[0-9a-zA-Z.]*bitchute.com/video/", url):
             temp_id = url.split("/video/")
             if len(temp_id) == 2:
-                ie_key = "bitchute"
                 temp_id = temp_id[1].split("&")[0]
                 temp_id = temp_id.split("/")[0]
                 temp_id = temp_id.split("?")[0]
-        elif re.match("^https://[0-9a-zA-Z.]*youtube.com/", url):
+        elif ie_key == "youtube" and re.match("^https://[0-9a-zA-Z.]*youtube.com/", url):
             temp_id = url.split("?v=")
             if len(temp_id) == 1:
                 temp_id = url.split("&v=")
             if len(temp_id) == 2:
-                ie_key = "youtube"
                 temp_id = temp_id[1].split("&")[0]
+        else:
+            return None  # Unhandled extractor
         # ie_key should only be set if an archive check should be done
-        if ie_key is not None:
-            temp_info_dict = {'id': temp_id, 'ie_key': ie_key}
-            if self.in_download_archive(temp_info_dict):
-                reason = "[download] [%s] ID %s has already been recorded in archive" % (ie_key, temp_id)
-                return reason
+        temp_info_dict = {'id': temp_id, 'ie_key': ie_key}
+        if self.in_download_archive(temp_info_dict):
+            reason = "[download] [%s] ID %s has already been recorded in archive" % (ie_key, temp_id)
+            return reason
         return None
 
     @staticmethod
