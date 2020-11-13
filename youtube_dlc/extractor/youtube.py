@@ -3153,8 +3153,8 @@ class YoutubeChannelIE(YoutubePlaylistBaseInfoExtractor):
 
 class YoutubeUserIE(YoutubeChannelIE):
     IE_DESC = 'YouTube.com user videos (URL or "ytuser" keyword)'
-    _VALID_URL = r'(?:(?:https?://(?:\w+\.)?youtube\.com/(?:(?P<user>user|c)/)?(?!(?:attribution_link|watch|results|shared)(?:$|[^a-z_A-Z0-9%-])))|ytuser:)(?!feed/)(?P<id>[A-Za-z0-9_%-]+)'
-    _TEMPLATE_URL = 'https://www.youtube.com/%s/%s/videos'
+    _VALID_URL = r'(?:(?:https?://(?:\w+\.)?youtube\.com/(?P<user>user/|c/)?(?!(?:attribution_link|watch|results|shared)(?:$|[^a-z_A-Z0-9%-])))|ytuser:)(?!feed/)(?P<id>[A-Za-z0-9_%-]+)'
+    _TEMPLATE_URL = 'https://www.youtube.com/%s%s/videos'
     IE_NAME = 'youtube:user'
 
     _TESTS = [{
@@ -3207,7 +3207,7 @@ class YoutubeUserIE(YoutubeChannelIE):
 
     def _build_template_url(self, url, channel_id):
         mobj = re.match(self._VALID_URL, url)
-        return self._TEMPLATE_URL % (mobj.group('user') or 'user', mobj.group('id'))
+        return self._TEMPLATE_URL % (mobj.group('user') or '', mobj.group('id'))
 
 
 class YoutubeLiveIE(YoutubeBaseInfoExtractor):
