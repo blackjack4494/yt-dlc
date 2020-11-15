@@ -1948,6 +1948,8 @@ class YoutubeDL(object):
 
         self._write_thumbnails(info_dict, filename)
 
+        # Download
+        must_record_download_archive = False
         if not self.params.get('skip_download', False):
             try:
                 if info_dict.get('requested_formats') is not None:
