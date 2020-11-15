@@ -2002,8 +2002,6 @@ class YoutubeDL(object):
             if not _write_link_file('desktop', DOT_DESKTOP_LINK_TEMPLATE, '\n', embed_filename=True):
                 return
 
-        # Download
-        must_record_download_archive = False
         if not self.params.get('skip_download', False):
             try:
                 if info_dict.get('requested_formats') is not None:
