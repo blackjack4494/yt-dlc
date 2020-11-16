@@ -204,7 +204,7 @@ class VLiveIE(NaverBaseIE):
     def _replay(self, video_id, webpage, params, video_params):
         long_video_id = video_params["vodId"]
 
-        VOD_KEY_ENDPOINT = 'https://www.vlive.tv/globalv-web/vam-web/video/v1.0/vod/%s/inkey' % video_id
+        VOD_KEY_ENDPOINT = 'https://www.vlive.tv/globalv-web/vam-web/video/v1.0/vod/%s/inkey?gcc=KR' % video_id
         key_json = self._download_json(VOD_KEY_ENDPOINT, video_id,
                                        headers={"referer": "https://www.vlive.tv"})
         key = key_json["inkey"]
