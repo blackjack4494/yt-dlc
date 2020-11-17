@@ -2325,7 +2325,7 @@ class YoutubeDL(object):
                 for f in formats
                 if f.get('preference') is None or f['preference'] >= -1000]
             header_line = ['ID', 'EXT', 'RESOLUTION', 'FPS', '|', ' FILESIZE', '  TBR', 'PROTO',
-                           '|', 'VIDEO CODEC', '  VBR', 'AUDIO CODEC', ' ABR', ' ASR', 'NOTE']
+                           '|', 'VCODEC', '  VBR', 'ACODEC', ' ABR', ' ASR', 'NOTE']
         else:
             table = [
                 [
@@ -2340,8 +2340,12 @@ class YoutubeDL(object):
         if len(formats) > 1:
             table[-1][-1] += (' ' if table[-1][-1] else '') + '(best)'
         self.to_screen(
-            '[info] Available formats for %s:\n%s' %
-            (info_dict['id'], render_table(header_line, table, delim=new_format, extraGap=(0 if new_format else 1))))
+            '[info] Available formats for %s:\n%s' % (info_dict['id'], render_table(
+                header_line,
+                table, 
+                delim=new_format,
+                extraGap=(0 if new_format else 1),
+                hideEmpty=new_format)))
 
     def list_thumbnails(self, info_dict):
         thumbnails = info_dict.get('thumbnails')

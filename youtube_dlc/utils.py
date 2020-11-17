@@ -4311,10 +4311,21 @@ def determine_protocol(info_dict):
     return compat_urllib_parse_urlparse(url).scheme
 
 
-def render_table(header_row, data, delim=False, extraGap=0):
+def render_table(header_row, data, delim=False, extraGap=0, hideEmpty=False):
     """ Render a list of rows, each as a list of values """
+
+    def get_max_lens(table):
+        return [max(len(compat_str(v)) for v in col) for col in zip(*table)]
+    def filter_using_list(row, filterArray):
+        return [col for (take, col) in zip(filterArray, row) if take]
+
+    if hideEmpty:
+        max_lens = get_max_lens(data)
+        header_row = filter_using_list(header_row, max_lens)
+        data = [filter_using_list(row, max_lens) for row in data]
+    
     table = [header_row] + data
-    max_lens = [max(len(compat_str(v)) for v in col) for col in zip(*table)]
+    max_lens = get_max_lens(table)
     if delim:
         table = [header_row] + [['-' * ml for ml in max_lens]] + data
     format_str = ' '.join('%-' + compat_str(ml + extraGap) + 's' for ml in max_lens[:-1]) + ' %s'
