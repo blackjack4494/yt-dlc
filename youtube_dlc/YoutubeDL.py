@@ -2341,7 +2341,7 @@ class YoutubeDL(object):
             table[-1][-1] += (' ' if table[-1][-1] else '') + '(best)'
         self.to_screen(
             '[info] Available formats for %s:\n%s' %
-            (info_dict['id'], render_table(header_line, table, new_format)))
+            (info_dict['id'], render_table(header_line, table, delim=new_format, extraGap=(0 if new_format else 1))))
 
     def list_thumbnails(self, info_dict):
         thumbnails = info_dict.get('thumbnails')

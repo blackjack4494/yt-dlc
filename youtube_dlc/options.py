@@ -416,7 +416,7 @@ def parseOpts(overrideArguments=None):
         help='Present the output of -F in a more tabular form')
     video_format.add_option(
         '--list-formats-old',
-        action='store_false', dest='listformats_table'
+        action='store_false', dest='listformats_table',
         help=optparse.SUPPRESS_HELP)
     video_format.add_option(
         '--youtube-include-dash-manifest',

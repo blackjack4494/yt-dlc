@@ -4311,13 +4311,13 @@ def determine_protocol(info_dict):
     return compat_urllib_parse_urlparse(url).scheme
 
 
-def render_table(header_row, data, delim=False):
+def render_table(header_row, data, delim=False, extraGap=0):
     """ Render a list of rows, each as a list of values """
     table = [header_row] + data
     max_lens = [max(len(compat_str(v)) for v in col) for col in zip(*table)]
     if delim:
         table = [header_row] + [['-' * ml for ml in max_lens]] + data
-    format_str = ' '.join('%-' + compat_str(ml) + 's' for ml in max_lens[:-1]) + ' %s'
+    format_str = ' '.join('%-' + compat_str(ml + extraGap) + 's' for ml in max_lens[:-1]) + ' %s'
     return '\n'.join(format_str % tuple(row) for row in table)
 
 
