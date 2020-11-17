@@ -2342,7 +2342,7 @@ class YoutubeDL(object):
         self.to_screen(
             '[info] Available formats for %s:\n%s' % (info_dict['id'], render_table(
                 header_line,
-                table, 
+                table,
                 delim=new_format,
                 extraGap=(0 if new_format else 1),
                 hideEmpty=new_format)))

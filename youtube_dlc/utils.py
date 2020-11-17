@@ -4316,6 +4316,7 @@ def render_table(header_row, data, delim=False, extraGap=0, hideEmpty=False):
 
     def get_max_lens(table):
         return [max(len(compat_str(v)) for v in col) for col in zip(*table)]
+
     def filter_using_list(row, filterArray):
         return [col for (take, col) in zip(filterArray, row) if take]
 
@@ -4323,7 +4324,7 @@ def render_table(header_row, data, delim=False, extraGap=0, hideEmpty=False):
         max_lens = get_max_lens(data)
         header_row = filter_using_list(header_row, max_lens)
         data = [filter_using_list(row, max_lens) for row in data]
-    
+
     table = [header_row] + data
     max_lens = get_max_lens(table)
     if delim:
@@ -5728,7 +5729,7 @@ def random_birthday(year_field, month_field, day_field):
     }
 
 
-def format_field(obj, field, template='%s', ignore=(None,''), default='', func=None):
+def format_field(obj, field, template='%s', ignore=(None, ''), default='', func=None):
     val = obj.get(field, default)
     if func and val not in ignore:
         val = func(val)
