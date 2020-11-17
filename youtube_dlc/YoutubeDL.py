@@ -2289,16 +2289,16 @@ class YoutubeDL(object):
                 res += ', '
             res += '~' + format_bytes(fdict['filesize_approx'])
         return res
- 
+
     def _format_note_table(self, f):
         def join_fields(*vargs):
             return ', '.join((val for val in vargs if val != ''))
 
         return join_fields(
             'UNSUPPORTED' if f.get('ext') in ('f4f', 'f4m') else '',
-            format_field(f, 'language', '[%s]'), 
-            format_field(f, 'format_note'), 
-            format_field(f, 'container', ignore=(None, f.get('ext'))), 
+            format_field(f, 'language', '[%s]'),
+            format_field(f, 'format_note'),
+            format_field(f, 'container', ignore=(None, f.get('ext'))),
             format_field(f, 'asr', '%5dHz'))
 
     def list_formats(self, info_dict):
@@ -2307,10 +2307,10 @@ class YoutubeDL(object):
         if new_format:
             table = [
                 [
-                    format_field(f, 'format_id'), 
+                    format_field(f, 'format_id'),
                     format_field(f, 'ext'),
                     self.format_resolution(f),
-                    format_field(f, 'fps', '%d'), 
+                    format_field(f, 'fps', '%d'),
                     '|',
                     format_field(f, 'filesize', ' %s', func=format_bytes) + format_field(f, 'filesize_approx', '~%s', func=format_bytes),
                     format_field(f, 'tbr', '%4dk'),
@@ -2324,7 +2324,7 @@ class YoutubeDL(object):
                     self._format_note_table(f)]
                 for f in formats
                 if f.get('preference') is None or f['preference'] >= -1000]
-            header_line = ['ID', 'EXT', 'RESOLUTION', 'FPS', '|', ' FILESIZE', '  TBR', 'PROTO', 
+            header_line = ['ID', 'EXT', 'RESOLUTION', 'FPS', '|', ' FILESIZE', '  TBR', 'PROTO',
                            '|', 'VIDEO CODEC', '  VBR', 'AUDIO CODEC', ' ABR', ' ASR', 'NOTE']
         else:
             table = [
