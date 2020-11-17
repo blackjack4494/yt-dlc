@@ -890,7 +890,11 @@ def parseOpts(overrideArguments=None):
     extractor.add_option(
         '--sponskrub-cut', default=False,
         action='store_true', dest='sponskrub_cut',
-        help='Cut out the sponsor sections instead of simply marking them (Experimental)')
+        help='Cut out the sponsor sections instead of simply marking them')
+    extractor.add_option(
+        '--sponskrub-force', default=False,
+        action='store_true', dest='sponskrub_force',
+        help='Run sponskrub even if the video was already downloaded')
     extractor.add_option(
         '--sponskrub-location', metavar='PATH',
         dest='sponskrub_path', default='',

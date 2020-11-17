@@ -497,7 +497,9 @@ I will add some memorable short links to the binaries so you can download them e
                                      with the data available in SponsorBlock API
                                      (Youtube only)
     --sponskrub-cut                  Cut out the sponsor sections instead of
-                                     simply marking them (Experimental)
+                                     simply marking them
+    --sponskrub-force                Run sponskrub even if the video was
+                                     already downloaded. Use with caution
     --sponskrub-location             Location of the sponskrub binary;
                                      either the path to the binary or its
                                      containing directory

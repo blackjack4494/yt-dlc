@@ -313,6 +313,7 @@ def _real_main(argv=None):
             'path': opts.sponskrub_path,
             'args': opts.sponskrub_args,
             'cut': opts.sponskrub_cut,
+            'force': opts.sponskrub_force,
             'ignoreerror': opts.sponskrub is None,
         })
     # Please keep ExecAfterDownload towards the bottom as it allows the user to modify the final file in any way.
