@@ -51,7 +51,7 @@ class PinterestIE(InfoExtractor):
             video_url = video_data.get("url")
             video_thumbs = [
                 v
-                for (k, v) in pin_data.get("images").items()
+                for (_, v) in pin_data.get("images").items()
                 if v.get("width") == v.get("height")
             ]
             if not video_url:
