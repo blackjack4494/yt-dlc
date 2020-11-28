@@ -2947,6 +2947,87 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
         url = self._TEMPLATE_URL % playlist_id
         page = self._download_webpage(url, playlist_id)
 
+        yt_initial = self._get_yt_initial_data('', page)
+        if yt_initial:
+            playlist_items = try_get(yt_initial, lambda x: x['contents']['twoColumnBrowseResultsRenderer']['tabs'][0]['tabRenderer']['content']['sectionListRenderer']['contents'][0]['itemSectionRenderer']['contents'][0]['playlistVideoListRenderer']['contents'], list)
+            entries = []
+            playlist_page = 1
+            api_key = self._search_regex(
+                r'"INNERTUBE_API_KEY":"([^"]+)"',
+                page, 'api key', default="AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8", fatal=False)
+            ytcfg_string = self._search_regex(
+                r'ytcfg\.set\(({.*?"INNERTUBE_CONTEXT".*?})\);',
+                page, 'client context')
+            api_client_context = self._parse_json(ytcfg_string, 'client context', transform_source=js_to_json)['INNERTUBE_CONTEXT']
+            while playlist_items:
+                item = playlist_items.pop(0)
+
+                item_video = try_get(item, lambda x: x['playlistVideoRenderer'], dict)
+                if item_video:
+                    video_id = try_get(item_video, lambda x: x['videoId'], compat_str)
+                    if not video_id:
+                        continue
+                    entry = {
+                        '_type': 'url',
+                        'duration': int_or_none(try_get(item_video, lambda x: x['lengthSeconds'], compat_str)),
+                        'id': video_id,
+                        'ie_key': 'Youtube',
+                        # 'thumbnails': try_get(item_video, lambda x: x['thumbnail']['thumbnails'], list),
+                        'title': try_get(item_video, lambda x: x['title']['runs'][0]['text'], compat_str),
+                        'url': video_id
+                    }
+                    entries.append(entry)
+
+                item_continue = try_get(item, lambda x: x['continuationItemRenderer'], dict)
+                if item_continue:
+                    playlist_page += 1
+                    continuation_token = try_get(item_continue, lambda x: x['continuationEndpoint']['continuationCommand']['token'], compat_str)
+                    request_data = {
+                        'context': api_client_context,
+                        'continuation': continuation_token
+                    }
+                    response = self._download_json(
+                        'https://www.youtube.com/youtubei/v1/browse?key=%s' % api_key,
+                        data=json.dumps(request_data).encode('utf8'),
+                        errnote='Unable to download playlist page', fatal=False,
+                        headers={'Content-Type': 'application/json'},
+                        note='Downloading page %s' % playlist_page,
+                        video_id=playlist_id)
+                    playlist_items_new = try_get(response, lambda x: x['onResponseReceivedActions'][0]['appendContinuationItemsAction']['continuationItems'], list)
+                    if playlist_items_new:
+                        playlist_items.extend(playlist_items_new)
+
+            playlist_title = try_get(yt_initial, lambda x: x['microformat']['microformatDataRenderer']['title'], compat_str)
+            playlist_description = try_get(yt_initial, lambda x: x['microformat']['microformatDataRenderer']['description'], compat_str)
+            playlist = self.playlist_result(
+                entries,
+                playlist_id=playlist_id,
+                playlist_title=playlist_title,
+                playlist_description=playlist_description)
+
+            uploader_info = try_get(yt_initial, lambda x: x['sidebar']['playlistSidebarRenderer']['items'][1]['playlistSidebarSecondaryInfoRenderer']['videoOwner']['videoOwnerRenderer'], dict)
+            if uploader_info:
+                playlist.update({
+                    'uploader': try_get(uploader_info, lambda x: x['title']['runs'][0]['text'], compat_str),
+                    'uploader_id': try_get(uploader_info, lambda x: x['navigationEndpoint']['browseEndpoint']['browseId']),
+                    'uploader_url': 'https://youtube.com{}'.format(try_get(uploader_info, lambda x: x['navigationEndpoint']['browseEndpoint']['canonicalBaseUrl'], compat_str))
+                })
+            if playlist_id.startswith(self._YTM_PLAYLIST_PREFIX):
+                playlist.update(self._YTM_CHANNEL_INFO)
+
+            playlist_stats = try_get(yt_initial, lambda x: x['sidebar']['playlistSidebarRenderer']['items'][0]['playlistSidebarPrimaryInfoRenderer']['stats'], list)
+            if playlist_stats:
+                views_str = try_get(playlist_stats, lambda x: x[1]['simpleText'], compat_str)
+                if views_str.endswith('views'):
+                    playlist['view_count'] = int_or_none("".join(re.findall(r'\d+', views_str)))
+                last_updated_str = try_get(playlist_stats, lambda x: x[2]['runs'][1]['text'], compat_str)
+                if last_updated_str:
+                    playlist['updated_date'] = unified_strdate(last_updated_str)
+
+            has_videos = bool(entries)
+            return has_videos, playlist
+
+        # todo: fix this
         # the yt-alert-message now has tabindex attribute (see https://github.com/ytdl-org/youtube-dl/issues/11604)
         for match in re.findall(r'<div class="yt-alert-message"[^>]*>([^<]+)</div>', page):
             match = match.strip()
@@ -2968,44 +3049,14 @@ class YoutubePlaylistIE(YoutubePlaylistBaseInfoExtractor):
             else:
                 self.report_warning('Youtube gives an alert message: ' + match)
 
-        playlist_title = self._html_search_regex(
-            r'(?s)<h1 class="pl-header-title[^"]*"[^>]*>\s*(.*?)\s*</h1>',
-            page, 'title', default=None)
-
-        _UPLOADER_BASE = r'class=["\']pl-header-details[^>]+>\s*<li>\s*<a[^>]+\bhref='
-        uploader = self._html_search_regex(
-            r'%s["\']/(?:user|channel)/[^>]+>([^<]+)' % _UPLOADER_BASE,
-            page, 'uploader', default=None)
-        mobj = re.search(
-            r'%s(["\'])(?P<path>/(?:user|channel)/(?P<uploader_id>.+?))\1' % _UPLOADER_BASE,
-            page)
-        if mobj:
-            uploader_id = mobj.group('uploader_id')
-            uploader_url = compat_urlparse.urljoin(url, mobj.group('path'))
-        else:
-            uploader_id = uploader_url = None
-
-        has_videos = True
-
-        if not playlist_title:
-            try:
-                # Some playlist URLs don't actually serve a playlist (e.g.
-                # https://www.youtube.com/watch?v=FqZTN594JQw&list=PLMYEtVRpaqY00V9W81Cwmzp6N6vZqfUKD4)
-                next(self._entries(page, playlist_id))
-            except StopIteration:
-                has_videos = False
-
-        playlist = self.playlist_result(
-            self._entries(page, playlist_id), playlist_id, playlist_title)
-        playlist.update({
-            'uploader': uploader,
-            'uploader_id': uploader_id,
-            'uploader_url': uploader_url,
-        })
-        if playlist_id.startswith(self._YTM_PLAYLIST_PREFIX):
-            playlist.update(self._YTM_CHANNEL_INFO)
-
-        return has_videos, playlist
+        # example links don't work
+        # if not playlist_title:
+        #     try:
+        #         # Some playlist URLs don't actually serve a playlist (e.g.
+        #         # https://www.youtube.com/watch?v=FqZTN594JQw&list=PLMYEtVRpaqY00V9W81Cwmzp6N6vZqfUKD4)
+        #         next(self._entries(page, playlist_id))
+        #     except StopIteration:
+        #         has_videos = False
 
     def _check_download_just_video(self, url, playlist_id):
         # Check if it's a video-specific URL
