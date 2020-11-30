@@ -120,6 +120,7 @@ from .expressen import ExpressenIE
 from .zype import ZypeIE
 from .odnoklassniki import OdnoklassnikiIE
 from .kinja import KinjaEmbedIE
+from .doodstream import DoodStreamIE
 from .rcs import RCSEmbedsIE
 from .bitchute import BitChuteIE
 
@@ -3191,6 +3192,11 @@ class GenericIE(InfoExtractor):
         if foxnews_urls:
             return self.playlist_from_matches(
                 foxnews_urls, video_id, video_title, ie=FoxNewsIE.ie_key())
+
+        doodstream_urls = DoodStreamIE._extract_urls(webpage)
+        if doodstream_urls:
+            return self.playlist_from_matches(
+                doodstream_urls, video_id, video_title, ie=DoodStreamIE.ie_key())
 
         sharevideos_urls = [sharevideos_mobj.group('url') for sharevideos_mobj in re.finditer(
             r'<iframe[^>]+?\bsrc\s*=\s*(["\'])(?P<url>(?:https?:)?//embed\.share-videos\.se/auto/embed/\d+\?.*?\buid=\d+.*?)\1',

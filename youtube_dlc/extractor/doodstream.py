@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import string
 import random
 import time
+import re
 
 from .common import InfoExtractor
 
@@ -31,6 +32,12 @@ class DoodStreamIE(InfoExtractor):
             'thumbnail': 'https://img.doodcdn.com/snaps/8edqd5nppkac3x8u.jpg',
         }
     }]
+
+    @staticmethod
+    def _extract_urls(webpage):
+        return re.findall(
+            r'<iframe[^>]+?src=["\'](?P<url>(?:https?://)?dood\.(?:watch|to)/e/.+?)["\']',
+            webpage)
 
     def _real_extract(self, url):
         video_id = self._match_id(url)
