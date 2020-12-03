@@ -881,7 +881,7 @@ def parseOpts(overrideArguments=None):
     extractor = optparse.OptionGroup(parser, 'SponSkrub Options (SponsorBlock)')
     extractor.add_option(
         '--sponskrub',
-        action='store_true', dest='sponskrub', default=False,  # should default be None instead?
+        action='store_true', dest='sponskrub', default=None,
         help='Use sponskrub to mark sponsored sections with the data available in SponsorBlock API (Youtube only)')
     extractor.add_option(
         '--no-sponskrub',
