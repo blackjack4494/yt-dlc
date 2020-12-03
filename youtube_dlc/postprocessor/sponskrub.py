@@ -53,9 +53,9 @@ class SponSkrubPP(PostProcessor):
 
         self._downloader.to_screen('[sponskrub] Trying to %s sponsor sections' % ('remove' if self.cutout else 'mark'))
         if self.cutout:
-            self._downloader.to_screen('WARNING: Cutting out sponsor segments will cause the subtitles to go out of sync.')
+            self._downloader.report_warning('Cutting out sponsor segments will cause the subtitles to go out of sync.')
             if not information.get('__real_download', False):
-                self._downloader.to_screen('WARNING: If sponskrub is run multiple times, unintended parts of the video could be cut out.')
+                self._downloader.report_warning('If sponskrub is run multiple times, unintended parts of the video could be cut out.')
 
         filename = information['filepath']
         temp_filename = filename + '.' + self._temp_ext + os.path.splitext(filename)[1]
@@ -69,7 +69,7 @@ class SponSkrubPP(PostProcessor):
         cmd = [encodeArgument(i) for i in cmd]
 
         if self._downloader.params.get('verbose', False):
-            self._downloader.to_screen('[debug] sponskrub command line: %s' % shell_quote(cmd))
+            self._downloader.to_stderr('[debug] sponskrub command line: %s' % shell_quote(cmd))
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
         stdout, stderr = p.communicate()
 
