@@ -307,6 +307,7 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
     }
 
     _YT_INITIAL_DATA_RE = r'(?:window\s*\[\s*["\']ytInitialData["\']\s*\]|ytInitialData)\s*=\s*({.+?})\s*;'
+    _YT_INITIAL_PLAYER_RESPONSE_RE = r'ytInitialPlayerResponse\s*=\s*({.+?})\s*;'
 
     def _call_api(self, ep, query, video_id):
         data = self._DEFAULT_API_DATA.copy()
@@ -1092,7 +1093,10 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             },
         },
         {
-            # with '};' inside yt initial data (see https://github.com/ytdl-org/youtube-dl/issues/27093)
+            # with '};' inside yt initial data (see [1])
+            # see [2] for an example with '};' inside ytInitialPlayerResponse
+            # 1. https://github.com/ytdl-org/youtube-dl/issues/27093
+            # 2. https://github.com/ytdl-org/youtube-dl/issues/27216
             'url': 'https://www.youtube.com/watch?v=CHqg6qOn4no',
             'info_dict': {
                 'id': 'CHqg6qOn4no',
@@ -1771,7 +1775,8 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
         if not video_info and not player_response:
             player_response = extract_player_response(
                 self._search_regex(
-                    r'ytInitialPlayerResponse\s*=\s*({.+?})\s*;', video_webpage,
+                    (r'%s\s*(?:var\s+meta|</script|\n)' % self._YT_INITIAL_PLAYER_RESPONSE_RE,
+                     self._YT_INITIAL_PLAYER_RESPONSE_RE), video_webpage,
                     'initial player response', default='{}'),
                 video_id)
 
@@ -2894,12 +2899,17 @@ class YoutubeTabIE(YoutubeBaseInfoExtractor):
             # TODO
             pass
 
-    def _shelf_entries(self, shelf_renderer):
+    def _shelf_entries(self, shelf_renderer, skip_channels=False):
         ep = try_get(
             shelf_renderer, lambda x: x['endpoint']['commandMetadata']['webCommandMetadata']['url'],
             compat_str)
         shelf_url = urljoin('https://www.youtube.com', ep)
         if shelf_url:
+            # Skipping links to another channels, note that checking for
+            # endpoint.commandMetadata.webCommandMetadata.webPageTypwebPageType == WEB_PAGE_TYPE_CHANNEL
+            # will not work
+            if skip_channels and '/channels?' in shelf_url:
+                return
             title = try_get(
                 shelf_renderer, lambda x: x['title']['runs'][0]['text'], compat_str)
             yield self.url_result(shelf_url, video_title=title)
@@ -3064,7 +3074,8 @@ class YoutubeTabIE(YoutubeBaseInfoExtractor):
                         continue
                     renderer = isr_content.get('shelfRenderer')
                     if renderer:
-                        for entry in self._shelf_entries(renderer):
+                        is_channels_tab = tab.get('title') == 'Channels'
+                        for entry in self._shelf_entries(renderer, not is_channels_tab):
                             yield entry
                         continue
                     renderer = isr_content.get('backstagePostThreadRenderer')
@@ -3086,9 +3097,12 @@ class YoutubeTabIE(YoutubeBaseInfoExtractor):
                 continuation_list[0] = self._extract_continuation(parent_renderer)
 
         continuation_list = [None]  # Python 2 doesnot support nonlocal
+        tab_content = try_get(tab, lambda x: x['content'], dict)
+        if not tab_content:
+            return
         parent_renderer = (
-            try_get(tab, lambda x: x['sectionListRenderer'], dict)
-            or try_get(tab, lambda x: x['richGridRenderer'], dict) or {})
+            try_get(tab_content, lambda x: x['sectionListRenderer'], dict)
+            or try_get(tab_content, lambda x: x['richGridRenderer'], dict) or {})
         for entry in extract_entries(parent_renderer):
             yield entry
         continuation = continuation_list[0]
@@ -3212,7 +3226,7 @@ class YoutubeTabIE(YoutubeBaseInfoExtractor):
         if title is None:
             title = "Youtube " + playlist_id.title()
         playlist = self.playlist_result(
-            self._entries(selected_tab['content'], identity_token),
+            self._entries(selected_tab, identity_token),
             playlist_id=playlist_id, playlist_title=title,
             playlist_description=description)
         playlist.update(self._extract_uploader(data))
