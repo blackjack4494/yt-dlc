@@ -34,6 +34,8 @@
  - **adobetv:video**
  - **AdultSwim**
  - **aenetworks**: A+E Networks: A&E, Lifetime, History.com, FYI Network and History Vault
+ - **aenetworks:collection**
+ - **aenetworks:show**
  - **afreecatv**: afreecatv.com
  - **AirMozilla**
  - **AliExpressLive**
@@ -1176,6 +1178,7 @@
  - **youtube:subscriptions**: YouTube.com subscriptions feed, ":ytsubs" for short (requires authentication)
  - **youtube:tab**: YouTube.com tab
  - **youtube:watchlater**: Youtube watch later list, ":ytwatchlater" for short (requires authentication)
+ - **YoutubeYtBe**: youtu.be
  - **YoutubeYtUser**: YouTube.com user videos, URL or "ytuser" keyword
  - **Zapiks**
  - **Zaq1**

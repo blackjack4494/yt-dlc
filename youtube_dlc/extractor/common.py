@@ -2514,16 +2514,18 @@ class InfoExtractor(object):
         # amp-video and amp-audio are very similar to their HTML5 counterparts
         # so we wll include them right here (see
         # https://www.ampproject.org/docs/reference/components/amp-video)
+        # For dl8-* tags see https://delight-vr.com/documentation/dl8-video/
+        _MEDIA_TAG_NAME_RE = r'(?:(?:amp|dl8(?:-live)?)-)?(video|audio)'
         media_tags = [(media_tag, media_type, '')
                       for media_tag, media_type
-                      in re.findall(r'(?s)(<(?:amp-)?(video|audio)[^>]*/>)', webpage)]
+                      in re.findall(r'(?s)(<%s[^>]*/>)' % _MEDIA_TAG_NAME_RE, webpage)]
         media_tags.extend(re.findall(
             # We only allow video|audio followed by a whitespace or '>'.
             # Allowing more characters may end up in significant slow down (see
             # https://github.com/ytdl-org/youtube-dl/issues/11979, example URL:
             # http://www.porntrex.com/maps/videositemap.xml).
-            r'(?s)(<(?P<tag>(?:amp-)?(?:video|audio))(?:\s+[^>]*)?>)(.*?)</(?P=tag)>', webpage))
-        for media_tag, media_type, media_content in media_tags:
+            r'(?s)(<(?P<tag>%s)(?:\s+[^>]*)?>)(.*?)</(?P=tag)>' % _MEDIA_TAG_NAME_RE, webpage))
+        for media_tag, _, media_type, media_content in media_tags:
             media_info = {
                 'formats': [],
                 'subtitles': {},
