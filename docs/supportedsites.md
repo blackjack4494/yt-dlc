@@ -430,7 +430,8 @@
  - **la7.it**
  - **laola1tv**
  - **laola1tv:embed**
- - **lbry.tv**
+ - **lbry**
+ - **lbry:channel**
  - **LCI**
  - **Lcp**
  - **LcpPlay**
@@ -911,6 +912,7 @@
  - **TeleQuebecEmission**
  - **TeleQuebecLive**
  - **TeleQuebecSquat**
+ - **TeleQuebecVideo**
  - **TeleTask**
  - **Telewebion**
  - **TennisTV**
