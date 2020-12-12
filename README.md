@@ -421,7 +421,7 @@ I will add some memorable short links to the binaries so you can download them e
                                      out, youtube-dlc will ask interactively.
     -2, --twofactor TWOFACTOR        Two-factor authentication code
     -n, --netrc                      Use .netrc authentication data
-    --video-password PASSWORD        Video password (vimeo, smotri, youku)
+    --video-password PASSWORD        Video password (vimeo, youku)
 
 ## Adobe Pass Options:
     --ap-mso MSO                     Adobe Pass multiple-system operator (TV
