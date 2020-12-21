@@ -343,7 +343,6 @@ from .espn import (
 )
 from .esri import EsriVideoIE
 from .europa import EuropaIE
-from .everyonesmixtape import EveryonesMixtapeIE
 from .expotv import ExpoTVIE
 from .expressen import ExpressenIE
 from .extremetube import ExtremeTubeIE
@@ -522,7 +521,6 @@ from .joj import JojIE
 from .jwplatform import JWPlatformIE
 from .kakao import KakaoIE
 from .kaltura import KalturaIE
-from .kanalplay import KanalPlayIE
 from .kankan import KankanIE
 from .karaoketv import KaraoketvIE
 from .karrierevideos import KarriereVideosIE
@@ -705,7 +703,14 @@ from .naver import (
     NaverIE,
     NaverLiveIE,
 )
-from .nba import NBAIE
+from .nba import (
+    NBAWatchEmbedIE,
+    NBAWatchIE,
+    NBAWatchCollectionIE,
+    NBAEmbedIE,
+    NBAIE,
+    NBAChannelIE,
+)
 from .nbc import (
     CSNNEIE,
     NBCIE,
@@ -1163,7 +1168,6 @@ from .tagesschau import (
     TagesschauIE,
 )
 from .tass import TassIE
-from .tastytrade import TastyTradeIE
 from .tbs import TBSIE
 from .tdslifeway import TDSLifewayIE
 from .teachable import (
