@@ -516,7 +516,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
         '396': {'acodec': 'none', 'vcodec': 'av01.0.05M.08'},
         '397': {'acodec': 'none', 'vcodec': 'av01.0.05M.08'},
     }
-    _SUBTITLE_FORMATS = ('srv1', 'srv2', 'srv3', 'ttml', 'vtt')  # TODO 'json3' raising issues with automatic captions
+    _SUBTITLE_FORMATS = ('json3', 'srv1', 'srv2', 'srv3', 'ttml', 'vtt')
 
     _GEO_BYPASS = False
 
@@ -1348,17 +1348,16 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             return self._parse_json(
                 uppercase_escape(config), video_id, fatal=False)
 
-    def _get_automatic_captions(self, video_id, webpage):
+    def _get_automatic_captions(self, video_id, player_response, player_config):
         """We need the webpage for getting the captions url, pass it as an
            argument to speed up the process."""
         self.to_screen('%s: Looking for automatic captions' % video_id)
-        player_config = self._get_ytplayer_config(video_id, webpage)
         err_msg = 'Couldn\'t find automatic captions for %s' % video_id
-        if not player_config:
+        if not (player_response or player_config):
             self._downloader.report_warning(err_msg)
             return {}
         try:
-            args = player_config['args']
+            args = player_config.get('args') if player_config else {}
             caption_url = args.get('ttsurl')
             if caption_url:
                 timestamp = args['timestamp']
@@ -1417,19 +1416,15 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 return captions
 
             # New captions format as of 22.06.2017
-            player_response = args.get('player_response')
-            if player_response and isinstance(player_response, compat_str):
-                player_response = self._parse_json(
-                    player_response, video_id, fatal=False)
-                if player_response:
-                    renderer = player_response['captions']['playerCaptionsTracklistRenderer']
-                    base_url = renderer['captionTracks'][0]['baseUrl']
-                    sub_lang_list = []
-                    for lang in renderer['translationLanguages']:
-                        lang_code = lang.get('languageCode')
-                        if lang_code:
-                            sub_lang_list.append(lang_code)
-                    return make_captions(base_url, sub_lang_list)
+            if player_response:
+                renderer = player_response['captions']['playerCaptionsTracklistRenderer']
+                base_url = renderer['captionTracks'][0]['baseUrl']
+                sub_lang_list = []
+                for lang in renderer['translationLanguages']:
+                    lang_code = lang.get('languageCode')
+                    if lang_code:
+                        sub_lang_list.append(lang_code)
+                return make_captions(base_url, sub_lang_list)
 
             # Some videos don't provide ttsurl but rather caption_tracks and
             # caption_translation_languages (e.g. 20LmZk1hakA)
@@ -2366,7 +2361,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
         # subtitles
         video_subtitles = self.extract_subtitles(
             video_id, video_webpage, has_live_chat_replay)
-        automatic_captions = self.extract_automatic_captions(video_id, video_webpage)
+        automatic_captions = self.extract_automatic_captions(video_id, player_response, ytplayer_config)
 
         video_duration = try_get(
             video_info, lambda x: int_or_none(x['length_seconds'][0]))
