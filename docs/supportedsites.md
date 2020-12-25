@@ -273,7 +273,6 @@
  - **ESPNArticle**
  - **EsriVideo**
  - **Europa**
- - **EveryonesMixtape**
  - **EWETV**
  - **ExpoTV**
  - **Expressen**
@@ -406,7 +405,6 @@
  - **JWPlatform**
  - **Kakao**
  - **Kaltura**
- - **KanalPlay**: Kanal 5/9/11 Play
  - **Kankan**
  - **Karaoketv**
  - **KarriereVideos**
@@ -550,6 +548,11 @@
  - **Naver**
  - **Naver:live**
  - **NBA**
+ - **nba:watch**
+ - **nba:watch:collection**
+ - **NBAChannel**
+ - **NBAEmbed**
+ - **NBAWatchEmbed**
  - **NBC**
  - **NBCNews**
  - **nbcolympics**
@@ -579,8 +582,10 @@
  - **NextTV**: 壹電視
  - **Nexx**
  - **NexxEmbed**
- - **nfl.com**
+ - **nfl.com** (Currently broken)
+ - **nfl.com:article** (Currently broken)
  - **NhkVod**
+ - **NhkVodProgram**
  - **nhl.com**
  - **nick.com**
  - **nick.de**
@@ -595,7 +600,6 @@
  - **njoy:embed**
  - **NJPWWorld**: 新日本プロレスワールド
  - **NobelPrize**
- - **Noco**
  - **NonkTube**
  - **Noovo**
  - **Normalboots**
@@ -883,7 +887,6 @@
  - **Tagesschau**
  - **tagesschau:player**
  - **Tass**
- - **TastyTrade**
  - **TBS**
  - **TDSLifeway**
  - **Teachable**
@@ -957,6 +960,8 @@
  - **TV2DKBornholmPlay**
  - **TV4**: tv4.se and tv4play.se
  - **TV5MondePlus**: TV5MONDE+
+ - **tv5unis**
+ - **tv5unis:video**
  - **tv8.it**
  - **TVA**
  - **TVANouvelles**
@@ -1177,7 +1182,6 @@
  - **YoutubeYtBe**: youtu.be
  - **YoutubeYtUser**: YouTube.com user videos, URL or "ytuser" keyword
  - **Zapiks**
- - **Zaq1**
  - **Zattoo**
  - **ZattooLive**
  - **ZDF-3sat**
