@@ -127,6 +127,7 @@ from .bleacherreport import (
 from .blinkx import BlinkxIE
 from .bloomberg import BloombergIE
 from .bokecc import BokeCCIE
+from .bongacams import BongaCamsIE
 from .bostonglobe import BostonGlobeIE
 from .box import BoxIE
 from .bpb import BpbIE
@@ -1492,7 +1493,10 @@ from .weibo import (
     WeiboMobileIE
 )
 from .weiqitv import WeiqiTVIE
-from .wistia import WistiaIE
+from .wistia import (
+    WistiaIE,
+    WistiaPlaylistIE,
+)
 from .worldstarhiphop import WorldStarHipHopIE
 from .wsj import (
     WSJIE,

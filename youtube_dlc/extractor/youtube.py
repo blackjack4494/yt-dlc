@@ -64,9 +64,9 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
     _TFA_URL = 'https://accounts.google.com/_/signin/challenge?hl=en&TL={0}'
 
     _RESERVED_NAMES = (
-        r'course|embed|channel|c|user|playlist|watch|w|results|storefront|oops|'
-        r'shared|index|account|reporthistory|t/terms|about|upload|signin|logout|'
-        r'feed/(watch_later|history|subscriptions|library|trending|recommended)')
+        r'embed|e|channel|c|user|playlist|watch|w|v|results|shared|'
+        r'storefront|oops|index|account|reporthistory|t/terms|about|upload|signin|logout|'
+        r'feed/(?:watch_later|history|subscriptions|library|trending|recommended)')
 
     _NETRC_MACHINE = 'youtube'
     # If True it will raise an error if no login info is provided
@@ -2544,7 +2544,7 @@ class YoutubeTabIE(YoutubeBaseInfoExtractor):
                                 feed/|
                                 (?:playlist|watch)\?.*?\blist=
                             )|
-                            (?!(%s)([/#?]|$))  # Direct URLs
+                            (?!(?:%s)\b)  # Direct URLs
                         )
                         (?P<id>[^/?\#&]+)
                     ''' % YoutubeBaseInfoExtractor._RESERVED_NAMES
@@ -2813,13 +2813,22 @@ class YoutubeTabIE(YoutubeBaseInfoExtractor):
         # inline playlist with not always working continuations
         'url': 'https://www.youtube.com/watch?v=UC6u0Tct-Fo&list=PL36D642111D65BE7C',
         'only_matching': True,
-    }
-        # TODO
-        # {
-        #     'url': 'https://www.youtube.com/TheYoungTurks/live',
-        #     'only_matching': True,
-        # }
-    ]
+    }, {
+        'url': 'https://www.youtube.com/course?list=ECUl4u3cNGP61MdtwGTqZA0MreSaDybji8',
+        'only_matching': True,
+    }, {
+        'url': 'https://www.youtube.com/course',
+        'only_matching': True,
+    }, {
+        'url': 'https://www.youtube.com/zsecurity',
+        'only_matching': True,
+    }, {
+        'url': 'http://www.youtube.com/NASAgovVideo/videos',
+        'only_matching': True,
+    }, {
+        'url': 'https://www.youtube.com/TheYoungTurks/live',
+        'only_matching': True,
+    }]
 
     def _extract_channel_id(self, webpage):
         channel_id = self._html_search_meta(
