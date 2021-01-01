@@ -471,18 +471,18 @@ class BrightcoveNewIE(AdobePassIE):
     def _parse_brightcove_metadata(self, json_data, video_id, headers={}):
         title = json_data['name'].strip()
 
+        num_drm_sources = 0
         formats = []
-        sources_num = len(json_data.get('sources'))
-        key_systems_present = 0
-        for source in json_data.get('sources', []):
+        sources = json_data.get('sources') or []
+        for source in sources:
             container = source.get('container')
             ext = mimetype2ext(source.get('type'))
             src = source.get('src')
-            # https://apis.support.brightcove.com/playback/references/playback-api-video-fields-reference.html
-            if source.get('key_systems'):
-                key_systems_present += 1
+            # https://support.brightcove.com/playback-api-video-fields-reference#key_systems_object
+            if container == 'WVM' or source.get('key_systems'):
+                num_drm_sources += 1
                 continue
-            elif ext == 'ism' or container == 'WVM':
+            elif ext == 'ism':
                 continue
             elif ext == 'm3u8' or container == 'M2TS':
                 if not src:
@@ -540,14 +540,14 @@ class BrightcoveNewIE(AdobePassIE):
                     })
                 formats.append(f)
 
-        if sources_num == key_systems_present:
-            raise ExtractorError('This video is DRM protected', expected=True)
-
-        errors = json_data.get('errors')
-        if not formats and errors:
-            error = errors[0]
-            raise ExtractorError(
-                error.get('message') or error.get('error_subcode') or error['error_code'], expected=True)
+        if not formats:
+            errors = json_data.get('errors')
+            if errors:
+                error = errors[0]
+                raise ExtractorError(
+                    error.get('message') or error.get('error_subcode') or error['error_code'], expected=True)
+            if sources and num_drm_sources == len(sources):
+                raise ExtractorError('This video is DRM protected.', expected=True)
 
         self._sort_formats(formats)
 
