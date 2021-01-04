@@ -57,6 +57,7 @@
  - **appletrailers**
  - **appletrailers:section**
  - **archive.org**: archive.org videos
+ - **ArcPublishing**
  - **ARD**
  - **ARD:mediathek**
  - **ARDBetaMediathek**
@@ -620,6 +621,7 @@
  - **Npr**
  - **NRK**
  - **NRKPlaylist**
+ - **NRKRadioPodkast**
  - **NRKSkole**: NRK Skole
  - **NRKTV**: NRK TV and NRK Radio
  - **NRKTVDirekte**: NRK TV Direkte and NRK Radio Direkte
@@ -822,11 +824,14 @@
  - **Shared**: shared.sx
  - **ShowRoomLive**
  - **Sina**
+ - **sky.it**
+ - **sky:news**
+ - **sky:sports**
+ - **sky:sports:news**
+ - **skyacademy.it**
  - **SkylineWebcams**
- - **SkyNews**
  - **skynewsarabia:article**
  - **skynewsarabia:video**
- - **SkySports**
  - **Slideshare**
  - **SlidesLive**
  - **Slutload**

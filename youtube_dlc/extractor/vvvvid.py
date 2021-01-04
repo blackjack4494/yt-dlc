@@ -25,7 +25,6 @@ class VVVVIDIE(InfoExtractor):
             'duration': 239,
             'series': '"Perché dovrei guardarlo?" di Dario Moccia',
             'season_id': '437',
-            'season_number': 1,
             'episode': 'Ping Pong',
             'episode_number': 1,
             'episode_id': '3334',
@@ -75,7 +74,6 @@ class VVVVIDIE(InfoExtractor):
     def _extract_common_video_info(self, video_data):
         return {
             'thumbnail': video_data.get('thumbnail'),
-            'episode_number': int_or_none(video_data.get('number')),
             'episode_id': str_or_none(video_data.get('id')),
         }
 
@@ -145,6 +143,17 @@ class VVVVIDIE(InfoExtractor):
 
             return d
 
+        info = {}
+
+        def metadata_from_url(r_url):
+            if not info and r_url:
+                mobj = re.search(r'_(?:S(\d+))?Ep(\d+)', r_url)
+                if mobj:
+                    info['episode_number'] = int(mobj.group(2))
+                    season_number = mobj.group(1)
+                    if season_number:
+                        info['season_number'] = int(season_number)
+
         for quality in ('_sd', ''):
             embed_code = video_data.get('embed_info' + quality)
             if not embed_code:
@@ -152,7 +161,6 @@ class VVVVIDIE(InfoExtractor):
             embed_code = ds(embed_code)
             video_type = video_data.get('video_type')
             if video_type in ('video/rcs', 'video/kenc'):
-                embed_code = re.sub(r'https?://([^/]+)/z/', r'https://\1/i/', embed_code).replace('/manifest.f4m', '/master.m3u8')
                 if video_type == 'video/kenc':
                     kenc = self._download_json(
                         'https://www.vvvvid.it/kenc', video_id, query={
@@ -163,15 +171,16 @@ class VVVVIDIE(InfoExtractor):
                     kenc_message = kenc.get('message')
                     if kenc_message:
                         embed_code += '?' + ds(kenc_message)
-                formats.extend(self._extract_m3u8_formats(
-                    embed_code, video_id, 'mp4',
-                    m3u8_id='hls', fatal=False))
+                formats.extend(self._extract_akamai_formats(embed_code, video_id))
             else:
                 formats.extend(self._extract_wowza_formats(
                     'http://sb.top-ix.org/videomg/_definst_/mp4:%s/playlist.m3u8' % embed_code, video_id))
+            metadata_from_url(embed_code)
+
         self._sort_formats(formats)
 
-        info = self._extract_common_video_info(video_data)
+        metadata_from_url(video_data.get('thumbnail'))
+        info.update(self._extract_common_video_info(video_data))
         info.update({
             'id': video_id,
             'title': title,
@@ -179,7 +188,6 @@ class VVVVIDIE(InfoExtractor):
             'duration': int_or_none(video_data.get('length')),
             'series': video_data.get('show_title'),
             'season_id': season_id,
-            'season_number': video_data.get('season_number'),
             'episode': title,
             'view_count': int_or_none(video_data.get('views')),
             'like_count': int_or_none(video_data.get('video_likes')),
@@ -214,9 +222,10 @@ class VVVVIDShowIE(VVVVIDIE):
 
         entries = []
         for season in (seasons or []):
-            season_number = int_or_none(season.get('number'))
             episodes = season.get('episodes') or []
             for episode in episodes:
+                if episode.get('playable') is False:
+                    continue
                 season_id = str_or_none(episode.get('season_id'))
                 video_id = str_or_none(episode.get('video_id'))
                 if not (season_id and video_id):
@@ -228,7 +237,6 @@ class VVVVIDShowIE(VVVVIDIE):
                     'url': '/'.join([base_url, season_id, video_id]),
                     'title': episode.get('title'),
                     'description': episode.get('description'),
-                    'season_number': season_number,
                     'season_id': season_id,
                 })
                 entries.append(info)
