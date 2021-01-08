@@ -54,6 +54,7 @@
  - **Aparat**
  - **AppleConnect**
  - **AppleDaily**: 臺灣蘋果日報
+ - **ApplePodcasts**
  - **appletrailers**
  - **appletrailers:section**
  - **archive.org**: archive.org videos
@@ -97,6 +98,10 @@
  - **BellMedia**
  - **Bet**
  - **bfi:player**
+ - **bfmtv**
+ - **bfmtv:article**
+ - **bfmtv:live**
+ - **BibelTV**
  - **Bigflix**
  - **Bild**: Bild.de
  - **BiliBili**
@@ -341,6 +346,8 @@
  - **Go**
  - **GodTube**
  - **Golem**
+ - **google:podcasts**
+ - **google:podcasts:feed**
  - **GoogleDrive**
  - **Goshgay**
  - **GPUTechConf**
@@ -376,6 +383,8 @@
  - **HungamaSong**
  - **Hypem**
  - **ign.com**
+ - **IHeartRadio**
+ - **iheartradio:podcast**
  - **imdb**: Internet Movie Database trailers
  - **imdb:list**: Internet Movie Database lists
  - **Imgur**
@@ -700,7 +709,6 @@
  - **Playwire**
  - **pluralsight**
  - **pluralsight:course**
- - **plus.google**: Google Plus
  - **podomatic**
  - **Pokemon**
  - **PokemonWatch**
@@ -1136,7 +1144,7 @@
  - **WWE**
  - **XBef**
  - **XboxClips**
- - **XFileShare**: XFileShare based sites: ClipWatching, GoUnlimited, GoVid, HolaVid, Streamty, TheVideoBee, Uqload, VidBom, vidlo, VidLocker, VidShare, VUp, XVideoSharing
+ - **XFileShare**: XFileShare based sites: Aparat, ClipWatching, GoUnlimited, GoVid, HolaVid, Streamty, TheVideoBee, Uqload, VidBom, vidlo, VidLocker, VidShare, VUp, XVideoSharing
  - **XHamster**
  - **XHamsterEmbed**
  - **XHamsterUser**
