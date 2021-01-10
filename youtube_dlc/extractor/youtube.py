@@ -2374,7 +2374,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
         video_annotations = None
         if self._downloader.params.get('writeannotations', False):
             xsrf_token = self._search_regex(
-                r'([\'"])XSRF_TOKEN\1\s*:\s*([\'"])(?P<xsrf_token>[A-Za-z0-9+/=]+)\2',
+                r'([\'"])XSRF_TOKEN\1\s*:\s*([\'"])(?P<xsrf_token>(?:(?!\2).)+)\2',
                 video_webpage, 'xsrf token', group='xsrf_token', fatal=False)
             invideo_url = try_get(
                 player_response, lambda x: x['annotations'][0]['playerAnnotationsUrlsRenderer']['invideoUrl'], compat_str)
