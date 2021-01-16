@@ -424,7 +424,8 @@
  - **Katsomo**
  - **KeezMovies**
  - **Ketnet**
- - **KhanAcademy**
+ - **khanacademy**
+ - **khanacademy:unit**
  - **KickStarter**
  - **KinjaEmbed**
  - **KinoPoisk**
