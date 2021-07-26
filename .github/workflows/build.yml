@@ -76,6 +76,9 @@ jobs:
     runs-on: windows-latest
 
     needs: build_unix
+    
+    outputs:
+      sha2_windows: ${{ steps.sha2_file_win.outputs.sha2_windows }}
 
     steps:
     - uses: actions/checkout@v2
@@ -110,6 +113,9 @@ jobs:
     runs-on: windows-latest
 
     needs: [build_unix, build_windows]
+    
+    outputs:
+      sha2_windows32: ${{ steps.sha2_file_win.outputs.sha2_windows32 }}
 
     steps:
     - uses: actions/checkout@v2
