@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 from __future__ import unicode_literals
 
@@ -8,18 +8,18 @@ import sys
 import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from test.helper import get_params, try_rm
+from test.helper import get_params, try_rm, is_download_test
 
 
 import io
 
 import xml.etree.ElementTree
 
-import youtube_dlc.YoutubeDL
-import youtube_dlc.extractor
+import yt_dlp.YoutubeDL
+import yt_dlp.extractor
 
 
-class YoutubeDL(youtube_dlc.YoutubeDL):
+class YoutubeDL(yt_dlp.YoutubeDL):
     def __init__(self, *args, **kwargs):
         super(YoutubeDL, self).__init__(*args, **kwargs)
         self.to_stderr = self.to_screen
@@ -38,6 +38,7 @@ ANNOTATIONS_FILE = TEST_ID + '.annotations.xml'
 EXPECTED_ANNOTATIONS = ['Speech bubble', 'Note', 'Title', 'Spotlight', 'Label']
 
 
+@is_download_test
 class TestAnnotations(unittest.TestCase):
     def setUp(self):
         # Clear old files
@@ -45,7 +46,7 @@ class TestAnnotations(unittest.TestCase):
 
     def test_info_json(self):
         expected = list(EXPECTED_ANNOTATIONS)  # Two annotations could have the same text.
-        ie = youtube_dlc.extractor.YoutubeIE()
+        ie = yt_dlp.extractor.YoutubeIE()
         ydl = YoutubeDL(params)
         ydl.add_info_extractor(ie)
         ydl.download([TEST_ID])

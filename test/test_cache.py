@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 from __future__ import unicode_literals
@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 from test.helper import FakeYDL
-from youtube_dlc.cache import Cache
+from yt_dlp.cache import Cache
 
 
 def _is_empty(d):

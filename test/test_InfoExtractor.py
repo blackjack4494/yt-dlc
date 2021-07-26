@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import unicode_literals
 
@@ -10,10 +10,10 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from test.helper import FakeYDL, expect_dict, expect_value, http_server_port
-from youtube_dlc.compat import compat_etree_fromstring, compat_http_server
-from youtube_dlc.extractor.common import InfoExtractor
-from youtube_dlc.extractor import YoutubeIE, get_info_extractor
-from youtube_dlc.utils import encode_data_uri, strip_jsonp, ExtractorError, RegexNotFoundError
+from yt_dlp.compat import compat_etree_fromstring, compat_http_server
+from yt_dlp.extractor.common import InfoExtractor
+from yt_dlp.extractor import YoutubeIE, get_info_extractor
+from yt_dlp.utils import encode_data_uri, strip_jsonp, ExtractorError, RegexNotFoundError
 import threading
 
 
@@ -35,13 +35,13 @@ class InfoExtractorTestRequestHandler(compat_http_server.BaseHTTPRequestHandler)
             assert False
 
 
-class TestIE(InfoExtractor):
+class DummyIE(InfoExtractor):
     pass
 
 
 class TestInfoExtractor(unittest.TestCase):
     def setUp(self):
-        self.ie = TestIE(FakeYDL())
+        self.ie = DummyIE(FakeYDL())
 
     def test_ie_key(self):
         self.assertEqual(get_info_extractor(YoutubeIE.ie_key()), YoutubeIE)
@@ -98,6 +98,55 @@ class TestInfoExtractor(unittest.TestCase):
         self.assertRaises(RegexNotFoundError, ie._html_search_meta, 'z', html, None, fatal=True)
         self.assertRaises(RegexNotFoundError, ie._html_search_meta, ('z', 'x'), html, None, fatal=True)
 
+    def test_search_json_ld_realworld(self):
+        # https://github.com/ytdl-org/youtube-dl/issues/23306
+        expect_dict(
+            self,
+            self.ie._search_json_ld(r'''<script type="application/ld+json">
+{
+"@context": "http://schema.org/",
+"@type": "VideoObject",
+"name": "1 On 1 With Kleio",
+"url": "https://www.eporner.com/hd-porn/xN49A1cT3eB/1-On-1-With-Kleio/",
+"duration": "PT0H12M23S",
+"thumbnailUrl": ["https://static-eu-cdn.eporner.com/thumbs/static4/7/78/780/780814/9_360.jpg", "https://imggen.eporner.com/780814/1920/1080/9.jpg"],
+"contentUrl": "https://gvideo.eporner.com/xN49A1cT3eB/xN49A1cT3eB.mp4",
+"embedUrl": "https://www.eporner.com/embed/xN49A1cT3eB/1-On-1-With-Kleio/",
+"image": "https://static-eu-cdn.eporner.com/thumbs/static4/7/78/780/780814/9_360.jpg",
+"width": "1920",
+"height": "1080",
+"encodingFormat": "mp4",
+"bitrate": "6617kbps",
+"isFamilyFriendly": "False",
+"description": "Kleio Valentien",
+"uploadDate": "2015-12-05T21:24:35+01:00",
+"interactionStatistic": {
+"@type": "InteractionCounter",
+"interactionType": { "@type": "http://schema.org/WatchAction" },
+"userInteractionCount": 1120958
+}, "aggregateRating": {
+"@type": "AggregateRating",
+"ratingValue": "88",
+"ratingCount": "630",
+"bestRating": "100",
+"worstRating": "0"
+}, "actor": [{
+"@type": "Person",
+"name": "Kleio Valentien",
+"url": "https://www.eporner.com/pornstar/kleio-valentien/"
+}]}
+</script>''', None),
+            {
+                'title': '1 On 1 With Kleio',
+                'description': 'Kleio Valentien',
+                'url': 'https://gvideo.eporner.com/xN49A1cT3eB/xN49A1cT3eB.mp4',
+                'timestamp': 1449347075,
+                'duration': 743.0,
+                'view_count': 1120958,
+                'width': 1920,
+                'height': 1080,
+            })
+
     def test_download_json(self):
         uri = encode_data_uri(b'{"foo": "blah"}', 'application/json')
         self.assertEqual(self.ie._download_json(uri, None), {'foo': 'blah'})
@@ -108,6 +157,18 @@ class TestInfoExtractor(unittest.TestCase):
         self.assertEqual(self.ie._download_json(uri, None, fatal=False), None)
 
     def test_parse_html5_media_entries(self):
+        # inline video tag
+        expect_dict(
+            self,
+            self.ie._parse_html5_media_entries(
+                'https://127.0.0.1/video.html',
+                r'<html><video src="/vid.mp4" /></html>', None)[0],
+            {
+                'formats': [{
+                    'url': 'https://127.0.0.1/vid.mp4',
+                }],
+            })
+
         # from https://www.r18.com/
         # with kpbs in label
         expect_dict(
@@ -379,371 +440,430 @@ jwplayer("mediaplayer").setup({"abouttext":"Visit Indie DB","aboutlink":"http:\/
     def test_parse_m3u8_formats(self):
         _TEST_CASES = [
             (
-                # https://github.com/ytdl-org/youtube-dl/issues/11507
-                # http://pluzz.francetv.fr/videos/le_ministere.html
-                'pluzz_francetv_11507',
-                'http://replayftv-vh.akamaihd.net/i/streaming-adaptatif_france-dom-tom/2017/S16/J2/156589847-58f59130c1f52-,standard1,standard2,standard3,standard4,standard5,.mp4.csmil/master.m3u8?caption=2017%2F16%2F156589847-1492488987.m3u8%3Afra%3AFrancais&audiotrack=0%3Afra%3AFrancais',
-                [{
-                    'url': 'http://replayftv-vh.akamaihd.net/i/streaming-adaptatif_france-dom-tom/2017/S16/J2/156589847-58f59130c1f52-,standard1,standard2,standard3,standard4,standard5,.mp4.csmil/index_0_av.m3u8?null=0',
-                    'manifest_url': 'http://replayftv-vh.akamaihd.net/i/streaming-adaptatif_france-dom-tom/2017/S16/J2/156589847-58f59130c1f52-,standard1,standard2,standard3,standard4,standard5,.mp4.csmil/master.m3u8?caption=2017%2F16%2F156589847-1492488987.m3u8%3Afra%3AFrancais&audiotrack=0%3Afra%3AFrancais',
-                    'ext': 'mp4',
-                    'format_id': '180',
-                    'protocol': 'm3u8',
-                    'acodec': 'mp4a.40.2',
-                    'vcodec': 'avc1.66.30',
-                    'tbr': 180,
-                    'width': 256,
-                    'height': 144,
-                }, {
-                    'url': 'http://replayftv-vh.akamaihd.net/i/streaming-adaptatif_france-dom-tom/2017/S16/J2/156589847-58f59130c1f52-,standard1,standard2,standard3,standard4,standard5,.mp4.csmil/index_1_av.m3u8?null=0',
-                    'manifest_url': 'http://replayftv-vh.akamaihd.net/i/streaming-adaptatif_france-dom-tom/2017/S16/J2/156589847-58f59130c1f52-,standard1,standard2,standard3,standard4,standard5,.mp4.csmil/master.m3u8?caption=2017%2F16%2F156589847-1492488987.m3u8%3Afra%3AFrancais&audiotrack=0%3Afra%3AFrancais',
-                    'ext': 'mp4',
-                    'format_id': '303',
-                    'protocol': 'm3u8',
-                    'acodec': 'mp4a.40.2',
-                    'vcodec': 'avc1.66.30',
-                    'tbr': 303,
-                    'width': 320,
-                    'height': 180,
-                }, {
-                    'url': 'http://replayftv-vh.akamaihd.net/i/streaming-adaptatif_france-dom-tom/2017/S16/J2/156589847-58f59130c1f52-,standard1,standard2,standard3,standard4,standard5,.mp4.csmil/index_2_av.m3u8?null=0',
-                    'manifest_url': 'http://replayftv-vh.akamaihd.net/i/streaming-adaptatif_france-dom-tom/2017/S16/J2/156589847-58f59130c1f52-,standard1,standard2,standard3,standard4,standard5,.mp4.csmil/master.m3u8?caption=2017%2F16%2F156589847-1492488987.m3u8%3Afra%3AFrancais&audiotrack=0%3Afra%3AFrancais',
-                    'ext': 'mp4',
-                    'format_id': '575',
-                    'protocol': 'm3u8',
-                    'acodec': 'mp4a.40.2',
-                    'vcodec': 'avc1.66.30',
-                    'tbr': 575,
-                    'width': 512,
-                    'height': 288,
-                }, {
-                    'url': 'http://replayftv-vh.akamaihd.net/i/streaming-adaptatif_france-dom-tom/2017/S16/J2/156589847-58f59130c1f52-,standard1,standard2,standard3,standard4,standard5,.mp4.csmil/index_3_av.m3u8?null=0',
-                    'manifest_url': 'http://replayftv-vh.akamaihd.net/i/streaming-adaptatif_france-dom-tom/2017/S16/J2/156589847-58f59130c1f52-,standard1,standard2,standard3,standard4,standard5,.mp4.csmil/master.m3u8?caption=2017%2F16%2F156589847-1492488987.m3u8%3Afra%3AFrancais&audiotrack=0%3Afra%3AFrancais',
-                    'ext': 'mp4',
-                    'format_id': '831',
-                    'protocol': 'm3u8',
-                    'acodec': 'mp4a.40.2',
-                    'vcodec': 'avc1.77.30',
-                    'tbr': 831,
-                    'width': 704,
-                    'height': 396,
-                }, {
-                    'url': 'http://replayftv-vh.akamaihd.net/i/streaming-adaptatif_france-dom-tom/2017/S16/J2/156589847-58f59130c1f52-,standard1,standard2,standard3,standard4,standard5,.mp4.csmil/index_4_av.m3u8?null=0',
-                    'manifest_url': 'http://replayftv-vh.akamaihd.net/i/streaming-adaptatif_france-dom-tom/2017/S16/J2/156589847-58f59130c1f52-,standard1,standard2,standard3,standard4,standard5,.mp4.csmil/master.m3u8?caption=2017%2F16%2F156589847-1492488987.m3u8%3Afra%3AFrancais&audiotrack=0%3Afra%3AFrancais',
-                    'ext': 'mp4',
-                    'protocol': 'm3u8',
-                    'format_id': '1467',
-                    'acodec': 'mp4a.40.2',
-                    'vcodec': 'avc1.77.30',
-                    'tbr': 1467,
-                    'width': 1024,
-                    'height': 576,
-                }]
-            ),
-            (
                 # https://github.com/ytdl-org/youtube-dl/issues/11995
                 # http://teamcoco.com/video/clueless-gamer-super-bowl-for-honor
-                'teamcoco_11995',
-                'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/main.m3u8',
+                'img_bipbop_adv_example_fmp4',
+                'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
                 [{
-                    'url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/hls/CONAN_020217_Highlight_show-audio-160k_v4.m3u8',
-                    'manifest_url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/main.m3u8',
+                    'format_id': 'aud1-English',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/a1/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'language': 'en',
                     'ext': 'mp4',
-                    'format_id': 'audio-0-Default',
-                    'protocol': 'm3u8',
-                    'vcodec': 'none',
+                    'protocol': 'm3u8_native',
+                    'audio_ext': 'mp4',
                 }, {
-                    'url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/hls/CONAN_020217_Highlight_show-audio-64k_v4.m3u8',
-                    'manifest_url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/main.m3u8',
+                    'format_id': 'aud2-English',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/a2/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'language': 'en',
                     'ext': 'mp4',
-                    'format_id': 'audio-1-Default',
-                    'protocol': 'm3u8',
-                    'vcodec': 'none',
+                    'protocol': 'm3u8_native',
+                    'audio_ext': 'mp4',
                 }, {
-                    'url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/hls/CONAN_020217_Highlight_show-audio-64k_v4.m3u8',
-                    'manifest_url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/main.m3u8',
+                    'format_id': 'aud3-English',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/a3/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'language': 'en',
                     'ext': 'mp4',
-                    'format_id': '71',
-                    'protocol': 'm3u8',
-                    'acodec': 'mp4a.40.5',
-                    'vcodec': 'none',
-                    'tbr': 71,
+                    'protocol': 'm3u8_native',
+                    'audio_ext': 'mp4',
                 }, {
-                    'url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/hls/CONAN_020217_Highlight_show-400k_v4.m3u8',
-                    'manifest_url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/main.m3u8',
+                    'format_id': '530',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v2/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
                     'ext': 'mp4',
-                    'format_id': '413',
-                    'protocol': 'm3u8',
-                    'acodec': 'none',
-                    'vcodec': 'avc1.42001e',
-                    'tbr': 413,
-                    'width': 400,
-                    'height': 224,
+                    'protocol': 'm3u8_native',
+                    'width': 480,
+                    'height': 270,
+                    'vcodec': 'avc1.640015',
                 }, {
-                    'url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/hls/CONAN_020217_Highlight_show-400k_v4.m3u8',
-                    'manifest_url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/main.m3u8',
+                    'format_id': '561',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v2/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
                     'ext': 'mp4',
-                    'format_id': '522',
-                    'protocol': 'm3u8',
-                    'acodec': 'none',
-                    'vcodec': 'avc1.42001e',
-                    'tbr': 522,
-                    'width': 400,
-                    'height': 224,
+                    'protocol': 'm3u8_native',
+                    'width': 480,
+                    'height': 270,
+                    'vcodec': 'avc1.640015',
                 }, {
-                    'url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/hls/CONAN_020217_Highlight_show-1m_v4.m3u8',
-                    'manifest_url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/main.m3u8',
+                    'format_id': '753',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v2/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
                     'ext': 'mp4',
-                    'format_id': '1205',
-                    'protocol': 'm3u8',
-                    'acodec': 'none',
-                    'vcodec': 'avc1.4d001e',
-                    'tbr': 1205,
+                    'protocol': 'm3u8_native',
+                    'width': 480,
+                    'height': 270,
+                    'vcodec': 'avc1.640015',
+                }, {
+                    'format_id': '895',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v3/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
                     'width': 640,
                     'height': 360,
+                    'vcodec': 'avc1.64001e',
                 }, {
-                    'url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/hls/CONAN_020217_Highlight_show-2m_v4.m3u8',
-                    'manifest_url': 'http://ak.storage-w.teamcococdn.com/cdn/2017-02/98599/ed8f/main.m3u8',
+                    'format_id': '926',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v3/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
                     'ext': 'mp4',
-                    'format_id': '2374',
-                    'protocol': 'm3u8',
-                    'acodec': 'none',
-                    'vcodec': 'avc1.4d001f',
-                    'tbr': 2374,
-                    'width': 1024,
-                    'height': 576,
-                }]
+                    'protocol': 'm3u8_native',
+                    'width': 640,
+                    'height': 360,
+                    'vcodec': 'avc1.64001e',
+                }, {
+                    'format_id': '1118',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v3/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 640,
+                    'height': 360,
+                    'vcodec': 'avc1.64001e',
+                }, {
+                    'format_id': '1265',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v4/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 768,
+                    'height': 432,
+                    'vcodec': 'avc1.64001e',
+                }, {
+                    'format_id': '1295',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v4/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 768,
+                    'height': 432,
+                    'vcodec': 'avc1.64001e',
+                }, {
+                    'format_id': '1487',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v4/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 768,
+                    'height': 432,
+                    'vcodec': 'avc1.64001e',
+                }, {
+                    'format_id': '2168',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v5/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 960,
+                    'height': 540,
+                    'vcodec': 'avc1.640020',
+                }, {
+                    'format_id': '2198',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v5/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 960,
+                    'height': 540,
+                    'vcodec': 'avc1.640020',
+                }, {
+                    'format_id': '2390',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v5/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 960,
+                    'height': 540,
+                    'vcodec': 'avc1.640020',
+                }, {
+                    'format_id': '3168',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v6/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 1280,
+                    'height': 720,
+                    'vcodec': 'avc1.640020',
+                }, {
+                    'format_id': '3199',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v6/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 1280,
+                    'height': 720,
+                    'vcodec': 'avc1.640020',
+                }, {
+                    'format_id': '3391',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v6/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 1280,
+                    'height': 720,
+                    'vcodec': 'avc1.640020',
+                }, {
+                    'format_id': '4670',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v7/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 1920,
+                    'height': 1080,
+                    'vcodec': 'avc1.64002a',
+                }, {
+                    'format_id': '4701',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v7/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 1920,
+                    'height': 1080,
+                    'vcodec': 'avc1.64002a',
+                }, {
+                    'format_id': '4893',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v7/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 1920,
+                    'height': 1080,
+                    'vcodec': 'avc1.64002a',
+                }, {
+                    'format_id': '6170',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v8/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 1920,
+                    'height': 1080,
+                    'vcodec': 'avc1.64002a',
+                }, {
+                    'format_id': '6200',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v8/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 1920,
+                    'height': 1080,
+                    'vcodec': 'avc1.64002a',
+                }, {
+                    'format_id': '6392',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v8/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 1920,
+                    'height': 1080,
+                    'vcodec': 'avc1.64002a',
+                }, {
+                    'format_id': '7968',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v9/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 1920,
+                    'height': 1080,
+                    'vcodec': 'avc1.64002a',
+                }, {
+                    'format_id': '7998',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v9/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 1920,
+                    'height': 1080,
+                    'vcodec': 'avc1.64002a',
+                }, {
+                    'format_id': '8190',
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/v9/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'width': 1920,
+                    'height': 1080,
+                    'vcodec': 'avc1.64002a',
+                }],
+                {}
             ),
             (
-                # https://github.com/ytdl-org/youtube-dl/issues/12211
-                # http://video.toggle.sg/en/series/whoopie-s-world/ep3/478601
-                'toggle_mobile_12211',
-                'http://cdnapi.kaltura.com/p/2082311/sp/208231100/playManifest/protocol/http/entryId/0_89q6e8ku/format/applehttp/tags/mobile_sd/f/a.m3u8',
+                'bipbop_16x9',
+                'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
                 [{
-                    'url': 'http://k.toggle.sg/fhls/p/2082311/sp/208231100/serveFlavor/entryId/0_89q6e8ku/v/2/pv/1/flavorId/0_sa2ntrdg/name/a.mp4/index.m3u8',
-                    'manifest_url': 'http://cdnapi.kaltura.com/p/2082311/sp/208231100/playManifest/protocol/http/entryId/0_89q6e8ku/format/applehttp/tags/mobile_sd/f/a.m3u8',
-                    'ext': 'mp4',
-                    'format_id': 'audio-English',
-                    'protocol': 'm3u8',
+                    'format_id': 'bipbop_audio-BipBop Audio 2',
+                    'format_index': None,
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/alternate_audio_aac/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
                     'language': 'eng',
+                    'ext': 'mp4',
+                    'protocol': 'm3u8_native',
+                    'preference': None,
+                    'quality': None,
                     'vcodec': 'none',
+                    'audio_ext': 'mp4',
+                    'video_ext': 'none',
                 }, {
-                    'url': 'http://k.toggle.sg/fhls/p/2082311/sp/208231100/serveFlavor/entryId/0_89q6e8ku/v/2/pv/1/flavorId/0_r7y0nitg/name/a.mp4/index.m3u8',
-                    'manifest_url': 'http://cdnapi.kaltura.com/p/2082311/sp/208231100/playManifest/protocol/http/entryId/0_89q6e8ku/format/applehttp/tags/mobile_sd/f/a.m3u8',
+                    'format_id': '41',
+                    'format_index': None,
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/gear0/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
+                    'tbr': 41.457,
                     'ext': 'mp4',
-                    'format_id': 'audio-Undefined',
-                    'protocol': 'm3u8',
-                    'language': 'und',
+                    'fps': None,
+                    'protocol': 'm3u8_native',
+                    'preference': None,
+                    'quality': None,
                     'vcodec': 'none',
+                    'acodec': 'mp4a.40.2',
+                    'audio_ext': 'mp4',
+                    'video_ext': 'none',
+                    'abr': 41.457,
                 }, {
-                    'url': 'http://k.toggle.sg/fhls/p/2082311/sp/208231100/serveFlavor/entryId/0_89q6e8ku/v/2/pv/1/flavorId/0_qlk9hlzr/name/a.mp4/index.m3u8',
-                    'manifest_url': 'http://cdnapi.kaltura.com/p/2082311/sp/208231100/playManifest/protocol/http/entryId/0_89q6e8ku/format/applehttp/tags/mobile_sd/f/a.m3u8',
+                    'format_id': '263',
+                    'format_index': None,
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/gear1/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
+                    'tbr': 263.851,
                     'ext': 'mp4',
-                    'format_id': '155',
-                    'protocol': 'm3u8',
-                    'tbr': 155.648,
-                    'width': 320,
-                    'height': 180,
+                    'fps': None,
+                    'protocol': 'm3u8_native',
+                    'preference': None,
+                    'quality': None,
+                    'width': 416,
+                    'height': 234,
+                    'vcodec': 'avc1.4d400d',
+                    'acodec': 'mp4a.40.2',
+                    'video_ext': 'mp4',
+                    'audio_ext': 'none',
+                    'vbr': 263.851,
+                    'abr': 0,
                 }, {
-                    'url': 'http://k.toggle.sg/fhls/p/2082311/sp/208231100/serveFlavor/entryId/0_89q6e8ku/v/2/pv/1/flavorId/0_oefackmi/name/a.mp4/index.m3u8',
-                    'manifest_url': 'http://cdnapi.kaltura.com/p/2082311/sp/208231100/playManifest/protocol/http/entryId/0_89q6e8ku/format/applehttp/tags/mobile_sd/f/a.m3u8',
+                    'format_id': '577',
+                    'format_index': None,
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/gear2/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
+                    'tbr': 577.61,
                     'ext': 'mp4',
-                    'format_id': '502',
-                    'protocol': 'm3u8',
-                    'tbr': 502.784,
-                    'width': 480,
-                    'height': 270,
-                }, {
-                    'url': 'http://k.toggle.sg/fhls/p/2082311/sp/208231100/serveFlavor/entryId/0_89q6e8ku/v/12/pv/1/flavorId/0_vyg9pj7k/name/a.mp4/index.m3u8',
-                    'manifest_url': 'http://cdnapi.kaltura.com/p/2082311/sp/208231100/playManifest/protocol/http/entryId/0_89q6e8ku/format/applehttp/tags/mobile_sd/f/a.m3u8',
-                    'ext': 'mp4',
-                    'format_id': '827',
-                    'protocol': 'm3u8',
-                    'tbr': 827.392,
+                    'fps': None,
+                    'protocol': 'm3u8_native',
+                    'preference': None,
+                    'quality': None,
                     'width': 640,
                     'height': 360,
-                }, {
-                    'url': 'http://k.toggle.sg/fhls/p/2082311/sp/208231100/serveFlavor/entryId/0_89q6e8ku/v/12/pv/1/flavorId/0_50n4psvx/name/a.mp4/index.m3u8',
-                    'manifest_url': 'http://cdnapi.kaltura.com/p/2082311/sp/208231100/playManifest/protocol/http/entryId/0_89q6e8ku/format/applehttp/tags/mobile_sd/f/a.m3u8',
-                    'ext': 'mp4',
-                    'format_id': '1396',
-                    'protocol': 'm3u8',
-                    'tbr': 1396.736,
-                    'width': 854,
-                    'height': 480,
-                }]
-            ),
-            (
-                # http://www.twitch.tv/riotgames/v/6528877
-                'twitch_vod',
-                'https://usher.ttvnw.net/vod/6528877?allow_source=true&allow_audio_only=true&allow_spectre=true&player=twitchweb&nauth=%7B%22user_id%22%3Anull%2C%22vod_id%22%3A6528877%2C%22expires%22%3A1492887874%2C%22chansub%22%3A%7B%22restricted_bitrates%22%3A%5B%5D%7D%2C%22privileged%22%3Afalse%2C%22https_required%22%3Afalse%7D&nauthsig=3e29296a6824a0f48f9e731383f77a614fc79bee',
-                [{
-                    'url': 'https://vod.edgecast.hls.ttvnw.net/e5da31ab49_riotgames_15001215120_261543898/audio_only/index-muted-HM49I092CC.m3u8',
-                    'manifest_url': 'https://usher.ttvnw.net/vod/6528877?allow_source=true&allow_audio_only=true&allow_spectre=true&player=twitchweb&nauth=%7B%22user_id%22%3Anull%2C%22vod_id%22%3A6528877%2C%22expires%22%3A1492887874%2C%22chansub%22%3A%7B%22restricted_bitrates%22%3A%5B%5D%7D%2C%22privileged%22%3Afalse%2C%22https_required%22%3Afalse%7D&nauthsig=3e29296a6824a0f48f9e731383f77a614fc79bee',
-                    'ext': 'mp4',
-                    'format_id': 'Audio Only',
-                    'protocol': 'm3u8',
+                    'vcodec': 'avc1.4d401e',
                     'acodec': 'mp4a.40.2',
-                    'vcodec': 'none',
-                    'tbr': 182.725,
+                    'video_ext': 'mp4',
+                    'audio_ext': 'none',
+                    'vbr': 577.61,
+                    'abr': 0,
                 }, {
-                    'url': 'https://vod.edgecast.hls.ttvnw.net/e5da31ab49_riotgames_15001215120_261543898/mobile/index-muted-HM49I092CC.m3u8',
-                    'manifest_url': 'https://usher.ttvnw.net/vod/6528877?allow_source=true&allow_audio_only=true&allow_spectre=true&player=twitchweb&nauth=%7B%22user_id%22%3Anull%2C%22vod_id%22%3A6528877%2C%22expires%22%3A1492887874%2C%22chansub%22%3A%7B%22restricted_bitrates%22%3A%5B%5D%7D%2C%22privileged%22%3Afalse%2C%22https_required%22%3Afalse%7D&nauthsig=3e29296a6824a0f48f9e731383f77a614fc79bee',
+                    'format_id': '915',
+                    'format_index': None,
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/gear3/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
+                    'tbr': 915.905,
                     'ext': 'mp4',
-                    'format_id': 'Mobile',
-                    'protocol': 'm3u8',
+                    'fps': None,
+                    'protocol': 'm3u8_native',
+                    'preference': None,
+                    'quality': None,
+                    'width': 960,
+                    'height': 540,
+                    'vcodec': 'avc1.4d401f',
                     'acodec': 'mp4a.40.2',
-                    'vcodec': 'avc1.42C00D',
-                    'tbr': 280.474,
-                    'width': 400,
-                    'height': 226,
+                    'video_ext': 'mp4',
+                    'audio_ext': 'none',
+                    'vbr': 915.905,
+                    'abr': 0,
                 }, {
-                    'url': 'https://vod.edgecast.hls.ttvnw.net/e5da31ab49_riotgames_15001215120_261543898/low/index-muted-HM49I092CC.m3u8',
-                    'manifest_url': 'https://usher.ttvnw.net/vod/6528877?allow_source=true&allow_audio_only=true&allow_spectre=true&player=twitchweb&nauth=%7B%22user_id%22%3Anull%2C%22vod_id%22%3A6528877%2C%22expires%22%3A1492887874%2C%22chansub%22%3A%7B%22restricted_bitrates%22%3A%5B%5D%7D%2C%22privileged%22%3Afalse%2C%22https_required%22%3Afalse%7D&nauthsig=3e29296a6824a0f48f9e731383f77a614fc79bee',
+                    'format_id': '1030',
+                    'format_index': None,
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/gear4/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
+                    'tbr': 1030.138,
                     'ext': 'mp4',
-                    'format_id': 'Low',
-                    'protocol': 'm3u8',
-                    'acodec': 'mp4a.40.2',
-                    'vcodec': 'avc1.42C01E',
-                    'tbr': 628.347,
-                    'width': 640,
-                    'height': 360,
-                }, {
-                    'url': 'https://vod.edgecast.hls.ttvnw.net/e5da31ab49_riotgames_15001215120_261543898/medium/index-muted-HM49I092CC.m3u8',
-                    'manifest_url': 'https://usher.ttvnw.net/vod/6528877?allow_source=true&allow_audio_only=true&allow_spectre=true&player=twitchweb&nauth=%7B%22user_id%22%3Anull%2C%22vod_id%22%3A6528877%2C%22expires%22%3A1492887874%2C%22chansub%22%3A%7B%22restricted_bitrates%22%3A%5B%5D%7D%2C%22privileged%22%3Afalse%2C%22https_required%22%3Afalse%7D&nauthsig=3e29296a6824a0f48f9e731383f77a614fc79bee',
-                    'ext': 'mp4',
-                    'format_id': 'Medium',
-                    'protocol': 'm3u8',
-                    'acodec': 'mp4a.40.2',
-                    'vcodec': 'avc1.42C01E',
-                    'tbr': 893.387,
-                    'width': 852,
-                    'height': 480,
-                }, {
-                    'url': 'https://vod.edgecast.hls.ttvnw.net/e5da31ab49_riotgames_15001215120_261543898/high/index-muted-HM49I092CC.m3u8',
-                    'manifest_url': 'https://usher.ttvnw.net/vod/6528877?allow_source=true&allow_audio_only=true&allow_spectre=true&player=twitchweb&nauth=%7B%22user_id%22%3Anull%2C%22vod_id%22%3A6528877%2C%22expires%22%3A1492887874%2C%22chansub%22%3A%7B%22restricted_bitrates%22%3A%5B%5D%7D%2C%22privileged%22%3Afalse%2C%22https_required%22%3Afalse%7D&nauthsig=3e29296a6824a0f48f9e731383f77a614fc79bee',
-                    'ext': 'mp4',
-                    'format_id': 'High',
-                    'protocol': 'm3u8',
-                    'acodec': 'mp4a.40.2',
-                    'vcodec': 'avc1.42C01F',
-                    'tbr': 1603.789,
+                    'fps': None,
+                    'protocol': 'm3u8_native',
+                    'preference': None,
+                    'quality': None,
                     'width': 1280,
                     'height': 720,
-                }, {
-                    'url': 'https://vod.edgecast.hls.ttvnw.net/e5da31ab49_riotgames_15001215120_261543898/chunked/index-muted-HM49I092CC.m3u8',
-                    'manifest_url': 'https://usher.ttvnw.net/vod/6528877?allow_source=true&allow_audio_only=true&allow_spectre=true&player=twitchweb&nauth=%7B%22user_id%22%3Anull%2C%22vod_id%22%3A6528877%2C%22expires%22%3A1492887874%2C%22chansub%22%3A%7B%22restricted_bitrates%22%3A%5B%5D%7D%2C%22privileged%22%3Afalse%2C%22https_required%22%3Afalse%7D&nauthsig=3e29296a6824a0f48f9e731383f77a614fc79bee',
-                    'ext': 'mp4',
-                    'format_id': 'Source',
-                    'protocol': 'm3u8',
+                    'vcodec': 'avc1.4d401f',
                     'acodec': 'mp4a.40.2',
-                    'vcodec': 'avc1.100.31',
-                    'tbr': 3214.134,
-                    'width': 1280,
-                    'height': 720,
-                }]
-            ),
-            (
-                # http://www.vidio.com/watch/165683-dj_ambred-booyah-live-2015
-                # EXT-X-STREAM-INF tag with NAME attribute that is not defined
-                # in HLS specification
-                'vidio',
-                'https://www.vidio.com/videos/165683/playlist.m3u8',
-                [{
-                    'url': 'https://cdn1-a.production.vidio.static6.com/uploads/165683/dj_ambred-4383-b300.mp4.m3u8',
-                    'manifest_url': 'https://www.vidio.com/videos/165683/playlist.m3u8',
+                    'video_ext': 'mp4',
+                    'audio_ext': 'none',
+                    'vbr': 1030.138,
+                    'abr': 0,
+                }, {
+                    'format_id': '1924',
+                    'format_index': None,
+                    'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/gear5/prog_index.m3u8',
+                    'manifest_url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
+                    'tbr': 1924.009,
                     'ext': 'mp4',
-                    'format_id': '270p 3G',
-                    'protocol': 'm3u8',
-                    'tbr': 300,
-                    'width': 480,
-                    'height': 270,
-                }, {
-                    'url': 'https://cdn1-a.production.vidio.static6.com/uploads/165683/dj_ambred-4383-b600.mp4.m3u8',
-                    'manifest_url': 'https://www.vidio.com/videos/165683/playlist.m3u8',
-                    'ext': 'mp4',
-                    'format_id': '360p SD',
-                    'protocol': 'm3u8',
-                    'tbr': 600,
-                    'width': 640,
-                    'height': 360,
-                }, {
-                    'url': 'https://cdn1-a.production.vidio.static6.com/uploads/165683/dj_ambred-4383-b1200.mp4.m3u8',
-                    'manifest_url': 'https://www.vidio.com/videos/165683/playlist.m3u8',
-                    'ext': 'mp4',
-                    'format_id': '720p HD',
-                    'protocol': 'm3u8',
-                    'tbr': 1200,
-                    'width': 1280,
-                    'height': 720,
-                }]
-            ),
-            (
-                # https://github.com/ytdl-org/youtube-dl/issues/18923
-                # https://www.ted.com/talks/boris_hesser_a_grassroots_healthcare_revolution_in_africa
-                'ted_18923',
-                'http://hls.ted.com/talks/31241.m3u8',
-                [{
-                    'url': 'http://hls.ted.com/videos/BorisHesser_2018S/audio/600k.m3u8?nobumpers=true&uniqueId=76011e2b',
-                    'format_id': '600k-Audio',
-                    'vcodec': 'none',
-                }, {
-                    'url': 'http://hls.ted.com/videos/BorisHesser_2018S/audio/600k.m3u8?nobumpers=true&uniqueId=76011e2b',
-                    'format_id': '68',
-                    'vcodec': 'none',
-                }, {
-                    'url': 'http://hls.ted.com/videos/BorisHesser_2018S/video/64k.m3u8?nobumpers=true&uniqueId=76011e2b',
-                    'format_id': '163',
-                    'acodec': 'none',
-                    'width': 320,
-                    'height': 180,
-                }, {
-                    'url': 'http://hls.ted.com/videos/BorisHesser_2018S/video/180k.m3u8?nobumpers=true&uniqueId=76011e2b',
-                    'format_id': '481',
-                    'acodec': 'none',
-                    'width': 512,
-                    'height': 288,
-                }, {
-                    'url': 'http://hls.ted.com/videos/BorisHesser_2018S/video/320k.m3u8?nobumpers=true&uniqueId=76011e2b',
-                    'format_id': '769',
-                    'acodec': 'none',
-                    'width': 512,
-                    'height': 288,
-                }, {
-                    'url': 'http://hls.ted.com/videos/BorisHesser_2018S/video/450k.m3u8?nobumpers=true&uniqueId=76011e2b',
-                    'format_id': '984',
-                    'acodec': 'none',
-                    'width': 512,
-                    'height': 288,
-                }, {
-                    'url': 'http://hls.ted.com/videos/BorisHesser_2018S/video/600k.m3u8?nobumpers=true&uniqueId=76011e2b',
-                    'format_id': '1255',
-                    'acodec': 'none',
-                    'width': 640,
-                    'height': 360,
-                }, {
-                    'url': 'http://hls.ted.com/videos/BorisHesser_2018S/video/950k.m3u8?nobumpers=true&uniqueId=76011e2b',
-                    'format_id': '1693',
-                    'acodec': 'none',
-                    'width': 853,
-                    'height': 480,
-                }, {
-                    'url': 'http://hls.ted.com/videos/BorisHesser_2018S/video/1500k.m3u8?nobumpers=true&uniqueId=76011e2b',
-                    'format_id': '2462',
-                    'acodec': 'none',
-                    'width': 1280,
-                    'height': 720,
-                }]
+                    'fps': None,
+                    'protocol': 'm3u8_native',
+                    'preference': None,
+                    'quality': None,
+                    'width': 1920,
+                    'height': 1080,
+                    'vcodec': 'avc1.4d401f',
+                    'acodec': 'mp4a.40.2',
+                    'video_ext': 'mp4',
+                    'audio_ext': 'none',
+                    'vbr': 1924.009,
+                    'abr': 0,
+                }],
+                {
+                    'en': [{
+                        'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/subtitles/eng/prog_index.m3u8',
+                        'ext': 'vtt',
+                        'protocol': 'm3u8_native'
+                    }, {
+                        'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/subtitles/eng_forced/prog_index.m3u8',
+                        'ext': 'vtt',
+                        'protocol': 'm3u8_native'
+                    }],
+                    'fr': [{
+                        'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/subtitles/fra/prog_index.m3u8',
+                        'ext': 'vtt',
+                        'protocol': 'm3u8_native'
+                    }, {
+                        'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/subtitles/fra_forced/prog_index.m3u8',
+                        'ext': 'vtt',
+                        'protocol': 'm3u8_native'
+                    }],
+                    'es': [{
+                        'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/subtitles/spa/prog_index.m3u8',
+                        'ext': 'vtt',
+                        'protocol': 'm3u8_native'
+                    }, {
+                        'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/subtitles/spa_forced/prog_index.m3u8',
+                        'ext': 'vtt',
+                        'protocol': 'm3u8_native'
+                    }],
+                    'ja': [{
+                        'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/subtitles/jpn/prog_index.m3u8',
+                        'ext': 'vtt',
+                        'protocol': 'm3u8_native'
+                    }, {
+                        'url': 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/subtitles/jpn_forced/prog_index.m3u8',
+                        'ext': 'vtt',
+                        'protocol': 'm3u8_native'
+                    }],
+                }
             ),
         ]
 
-        for m3u8_file, m3u8_url, expected_formats in _TEST_CASES:
+        for m3u8_file, m3u8_url, expected_formats, expected_subs in _TEST_CASES:
             with io.open('./test/testdata/m3u8/%s.m3u8' % m3u8_file,
                          mode='r', encoding='utf-8') as f:
-                formats = self.ie._parse_m3u8_formats(
+                formats, subs = self.ie._parse_m3u8_formats_and_subtitles(
                     f.read(), m3u8_url, ext='mp4')
                 self.ie._sort_formats(formats)
                 expect_value(self, formats, expected_formats, None)
+                expect_value(self, subs, expected_subs, None)
 
     def test_parse_mpd_formats(self):
         _TEST_CASES = [
@@ -829,7 +949,8 @@ jwplayer("mediaplayer").setup({"abouttext":"Visit Indie DB","aboutlink":"http:\/
                     'tbr': 5997.485,
                     'width': 1920,
                     'height': 1080,
-                }]
+                }],
+                {},
             ), (
                 # https://github.com/ytdl-org/youtube-dl/pull/14844
                 'urls_only',
@@ -912,7 +1033,8 @@ jwplayer("mediaplayer").setup({"abouttext":"Visit Indie DB","aboutlink":"http:\/
                     'tbr': 4400,
                     'width': 1920,
                     'height': 1080,
-                }]
+                }],
+                {},
             ), (
                 # https://github.com/ytdl-org/youtube-dl/issues/20346
                 # Media considered unfragmented even though it contains
@@ -958,18 +1080,328 @@ jwplayer("mediaplayer").setup({"abouttext":"Visit Indie DB","aboutlink":"http:\/
                     'width': 360,
                     'height': 360,
                     'fps': 30,
-                }]
+                }],
+                {},
+            ), (
+                'subtitles',
+                'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/',
+                [{
+                    'format_id': 'audio=128001',
+                    'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                    'ext': 'm4a',
+                    'tbr': 128.001,
+                    'asr': 48000,
+                    'format_note': 'DASH audio',
+                    'container': 'm4a_dash',
+                    'vcodec': 'none',
+                    'acodec': 'mp4a.40.2',
+                    'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                    'fragment_base_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/dash/',
+                    'protocol': 'http_dash_segments',
+                    'audio_ext': 'm4a',
+                    'video_ext': 'none',
+                    'abr': 128.001,
+                }, {
+                    'format_id': 'video=100000',
+                    'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                    'ext': 'mp4',
+                    'width': 336,
+                    'height': 144,
+                    'tbr': 100,
+                    'format_note': 'DASH video',
+                    'container': 'mp4_dash',
+                    'vcodec': 'avc1.4D401F',
+                    'acodec': 'none',
+                    'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                    'fragment_base_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/dash/',
+                    'protocol': 'http_dash_segments',
+                    'video_ext': 'mp4',
+                    'audio_ext': 'none',
+                    'vbr': 100,
+                }, {
+                    'format_id': 'video=326000',
+                    'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                    'ext': 'mp4',
+                    'width': 562,
+                    'height': 240,
+                    'tbr': 326,
+                    'format_note': 'DASH video',
+                    'container': 'mp4_dash',
+                    'vcodec': 'avc1.4D401F',
+                    'acodec': 'none',
+                    'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                    'fragment_base_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/dash/',
+                    'protocol': 'http_dash_segments',
+                    'video_ext': 'mp4',
+                    'audio_ext': 'none',
+                    'vbr': 326,
+                }, {
+                    'format_id': 'video=698000',
+                    'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                    'ext': 'mp4',
+                    'width': 844,
+                    'height': 360,
+                    'tbr': 698,
+                    'format_note': 'DASH video',
+                    'container': 'mp4_dash',
+                    'vcodec': 'avc1.4D401F',
+                    'acodec': 'none',
+                    'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                    'fragment_base_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/dash/',
+                    'protocol': 'http_dash_segments',
+                    'video_ext': 'mp4',
+                    'audio_ext': 'none',
+                    'vbr': 698,
+                }, {
+                    'format_id': 'video=1493000',
+                    'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                    'ext': 'mp4',
+                    'width': 1126,
+                    'height': 480,
+                    'tbr': 1493,
+                    'format_note': 'DASH video',
+                    'container': 'mp4_dash',
+                    'vcodec': 'avc1.4D401F',
+                    'acodec': 'none',
+                    'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                    'fragment_base_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/dash/',
+                    'protocol': 'http_dash_segments',
+                    'video_ext': 'mp4',
+                    'audio_ext': 'none',
+                    'vbr': 1493,
+                }, {
+                    'format_id': 'video=4482000',
+                    'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                    'ext': 'mp4',
+                    'width': 1688,
+                    'height': 720,
+                    'tbr': 4482,
+                    'format_note': 'DASH video',
+                    'container': 'mp4_dash',
+                    'vcodec': 'avc1.4D401F',
+                    'acodec': 'none',
+                    'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                    'fragment_base_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/dash/',
+                    'protocol': 'http_dash_segments',
+                    'video_ext': 'mp4',
+                    'audio_ext': 'none',
+                    'vbr': 4482,
+                }],
+                {
+                    'en': [
+                        {
+                            'ext': 'mp4',
+                            'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                            'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/manifest.mpd',
+                            'fragment_base_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/dash/',
+                            'protocol': 'http_dash_segments',
+                        }
+                    ]
+                },
             )
         ]
 
-        for mpd_file, mpd_url, mpd_base_url, expected_formats in _TEST_CASES:
+        for mpd_file, mpd_url, mpd_base_url, expected_formats, expected_subtitles in _TEST_CASES:
             with io.open('./test/testdata/mpd/%s.mpd' % mpd_file,
                          mode='r', encoding='utf-8') as f:
-                formats = self.ie._parse_mpd_formats(
+                formats, subtitles = self.ie._parse_mpd_formats_and_subtitles(
                     compat_etree_fromstring(f.read().encode('utf-8')),
                     mpd_base_url=mpd_base_url, mpd_url=mpd_url)
                 self.ie._sort_formats(formats)
                 expect_value(self, formats, expected_formats, None)
+                expect_value(self, subtitles, expected_subtitles, None)
+
+    def test_parse_ism_formats(self):
+        _TEST_CASES = [
+            (
+                'sintel',
+                'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                [{
+                    'format_id': 'audio-128',
+                    'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                    'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                    'ext': 'isma',
+                    'tbr': 128,
+                    'asr': 48000,
+                    'vcodec': 'none',
+                    'acodec': 'AACL',
+                    'protocol': 'ism',
+                    '_download_params': {
+                        'stream_type': 'audio',
+                        'duration': 8880746666,
+                        'timescale': 10000000,
+                        'width': 0,
+                        'height': 0,
+                        'fourcc': 'AACL',
+                        'codec_private_data': '1190',
+                        'sampling_rate': 48000,
+                        'channels': 2,
+                        'bits_per_sample': 16,
+                        'nal_unit_length_field': 4
+                    },
+                    'audio_ext': 'isma',
+                    'video_ext': 'none',
+                    'abr': 128,
+                }, {
+                    'format_id': 'video-100',
+                    'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                    'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                    'ext': 'ismv',
+                    'width': 336,
+                    'height': 144,
+                    'tbr': 100,
+                    'vcodec': 'AVC1',
+                    'acodec': 'none',
+                    'protocol': 'ism',
+                    '_download_params': {
+                        'stream_type': 'video',
+                        'duration': 8880746666,
+                        'timescale': 10000000,
+                        'width': 336,
+                        'height': 144,
+                        'fourcc': 'AVC1',
+                        'codec_private_data': '00000001674D401FDA0544EFFC2D002CBC40000003004000000C03C60CA80000000168EF32C8',
+                        'channels': 2,
+                        'bits_per_sample': 16,
+                        'nal_unit_length_field': 4
+                    },
+                    'video_ext': 'ismv',
+                    'audio_ext': 'none',
+                    'vbr': 100,
+                }, {
+                    'format_id': 'video-326',
+                    'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                    'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                    'ext': 'ismv',
+                    'width': 562,
+                    'height': 240,
+                    'tbr': 326,
+                    'vcodec': 'AVC1',
+                    'acodec': 'none',
+                    'protocol': 'ism',
+                    '_download_params': {
+                        'stream_type': 'video',
+                        'duration': 8880746666,
+                        'timescale': 10000000,
+                        'width': 562,
+                        'height': 240,
+                        'fourcc': 'AVC1',
+                        'codec_private_data': '00000001674D401FDA0241FE23FFC3BC83BA44000003000400000300C03C60CA800000000168EF32C8',
+                        'channels': 2,
+                        'bits_per_sample': 16,
+                        'nal_unit_length_field': 4
+                    },
+                    'video_ext': 'ismv',
+                    'audio_ext': 'none',
+                    'vbr': 326,
+                }, {
+                    'format_id': 'video-698',
+                    'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                    'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                    'ext': 'ismv',
+                    'width': 844,
+                    'height': 360,
+                    'tbr': 698,
+                    'vcodec': 'AVC1',
+                    'acodec': 'none',
+                    'protocol': 'ism',
+                    '_download_params': {
+                        'stream_type': 'video',
+                        'duration': 8880746666,
+                        'timescale': 10000000,
+                        'width': 844,
+                        'height': 360,
+                        'fourcc': 'AVC1',
+                        'codec_private_data': '00000001674D401FDA0350BFB97FF06AF06AD1000003000100000300300F1832A00000000168EF32C8',
+                        'channels': 2,
+                        'bits_per_sample': 16,
+                        'nal_unit_length_field': 4
+                    },
+                    'video_ext': 'ismv',
+                    'audio_ext': 'none',
+                    'vbr': 698,
+                }, {
+                    'format_id': 'video-1493',
+                    'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                    'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                    'ext': 'ismv',
+                    'width': 1126,
+                    'height': 480,
+                    'tbr': 1493,
+                    'vcodec': 'AVC1',
+                    'acodec': 'none',
+                    'protocol': 'ism',
+                    '_download_params': {
+                        'stream_type': 'video',
+                        'duration': 8880746666,
+                        'timescale': 10000000,
+                        'width': 1126,
+                        'height': 480,
+                        'fourcc': 'AVC1',
+                        'codec_private_data': '00000001674D401FDA011C3DE6FFF0D890D871000003000100000300300F1832A00000000168EF32C8',
+                        'channels': 2,
+                        'bits_per_sample': 16,
+                        'nal_unit_length_field': 4
+                    },
+                    'video_ext': 'ismv',
+                    'audio_ext': 'none',
+                    'vbr': 1493,
+                }, {
+                    'format_id': 'video-4482',
+                    'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                    'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                    'ext': 'ismv',
+                    'width': 1688,
+                    'height': 720,
+                    'tbr': 4482,
+                    'vcodec': 'AVC1',
+                    'acodec': 'none',
+                    'protocol': 'ism',
+                    '_download_params': {
+                        'stream_type': 'video',
+                        'duration': 8880746666,
+                        'timescale': 10000000,
+                        'width': 1688,
+                        'height': 720,
+                        'fourcc': 'AVC1',
+                        'codec_private_data': '00000001674D401FDA01A816F97FFC1ABC1AB440000003004000000C03C60CA80000000168EF32C8',
+                        'channels': 2,
+                        'bits_per_sample': 16,
+                        'nal_unit_length_field': 4
+                    },
+                    'video_ext': 'ismv',
+                    'audio_ext': 'none',
+                    'vbr': 4482,
+                }],
+                {
+                    'eng': [
+                        {
+                            'ext': 'ismt',
+                            'protocol': 'ism',
+                            'url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                            'manifest_url': 'https://sdn-global-streaming-cache-3qsdn.akamaized.net/stream/3144/files/17/07/672975/3144-kZT4LWMQw6Rh7Kpd.ism/Manifest',
+                            '_download_params': {
+                                'stream_type': 'text',
+                                'duration': 8880746666,
+                                'timescale': 10000000,
+                                'fourcc': 'TTML',
+                                'codec_private_data': ''
+                            }
+                        }
+                    ]
+                },
+            ),
+        ]
+
+        for ism_file, ism_url, expected_formats, expected_subtitles in _TEST_CASES:
+            with io.open('./test/testdata/ism/%s.Manifest' % ism_file,
+                         mode='r', encoding='utf-8') as f:
+                formats, subtitles = self.ie._parse_ism_formats_and_subtitles(
+                    compat_etree_fromstring(f.read().encode('utf-8')), ism_url=ism_url)
+                self.ie._sort_formats(formats)
+                expect_value(self, formats, expected_formats, None)
+                expect_value(self, subtitles, expected_subtitles, None)
 
     def test_parse_f4m_formats(self):
         _TEST_CASES = [

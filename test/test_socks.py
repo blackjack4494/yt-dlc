@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 from __future__ import unicode_literals
 
@@ -14,13 +14,15 @@ import subprocess
 from test.helper import (
     FakeYDL,
     get_params,
+    is_download_test,
 )
-from youtube_dlc.compat import (
+from yt_dlp.compat import (
     compat_str,
     compat_urllib_request,
 )
 
 
+@is_download_test
 class TestMultipleSocks(unittest.TestCase):
     @staticmethod
     def _check_params(attrs):
@@ -76,6 +78,7 @@ class TestMultipleSocks(unittest.TestCase):
             params['secondary_server_ip'])
 
 
+@is_download_test
 class TestSocks(unittest.TestCase):
     _SKIP_SOCKS_TEST = True
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from __future__ import unicode_literals
 
 # Allow direct execution
@@ -7,15 +7,17 @@ import sys
 import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from test.helper import FakeYDL
+from test.helper import FakeYDL, is_download_test
 
 
-from youtube_dlc.extractor import (
+from yt_dlp.extractor import (
     YoutubePlaylistIE,
+    YoutubeTabIE,
     YoutubeIE,
 )
 
 
+@is_download_test
 class TestYoutubeLists(unittest.TestCase):
     def assertIsPlaylist(self, info):
         """Make sure the info has '_type' set to 'playlist'"""
@@ -57,14 +59,22 @@ class TestYoutubeLists(unittest.TestCase):
         entries = result['entries']
         self.assertEqual(len(entries), 100)
 
-    def test_youtube_flat_playlist_titles(self):
+    def test_youtube_flat_playlist_extraction(self):
         dl = FakeYDL()
         dl.params['extract_flat'] = True
-        ie = YoutubePlaylistIE(dl)
-        result = ie.extract('https://www.youtube.com/playlist?list=PL-KKIb8rvtMSrAO9YFbeM6UQrAqoFTUWv')
+        ie = YoutubeTabIE(dl)
+        result = ie.extract('https://www.youtube.com/playlist?list=PL4lCao7KL_QFVb7Iudeipvc2BCavECqzc')
         self.assertIsPlaylist(result)
-        for entry in result['entries']:
-            self.assertTrue(entry.get('title'))
+        entries = list(result['entries'])
+        self.assertTrue(len(entries) == 1)
+        video = entries[0]
+        self.assertEqual(video['_type'], 'url_transparent')
+        self.assertEqual(video['ie_key'], 'Youtube')
+        self.assertEqual(video['id'], 'BaW_jenozKc')
+        self.assertEqual(video['url'], 'BaW_jenozKc')
+        self.assertEqual(video['title'], 'youtube-dl test video "\'/\\ä↭𝕐')
+        self.assertEqual(video['duration'], 10)
+        self.assertEqual(video['uploader'], 'Philipp Hagemeister')
 
 
 if __name__ == '__main__':
