@@ -36,7 +36,7 @@ from .utils import (
     write_string,
     render_table,
 )
-from .update import update_self
+from .update import update_binary
 from .downloader import (
     FileDownloader,
 )
@@ -455,7 +455,8 @@ def _real_main(argv=None):
     with YoutubeDL(ydl_opts) as ydl:
         # Update version
         if opts.update_self:
-            update_self(ydl.to_screen, opts.verbose, ydl._opener)
+            # update_self(ydl.to_screen, opts.verbose, ydl._opener)
+            update_binary(ydl)
 
         # Remove cache dir
         if opts.rm_cachedir:

@@ -7,6 +7,7 @@ import hashlib
 import os
 import subprocess
 import sys
+import platform
 from zipimport import zipimporter
 
 from .compat import compat_realpath
@@ -15,18 +16,173 @@ from .utils import encode_compat_str
 from .version import __version__
 
 
-def rsa_verify(message, signature, key):
-    from hashlib import sha256
-    assert isinstance(message, bytes)
-    byte_size = (len(bin(key[0])) - 2 + 8 - 1) // 8
-    signature = ('%x' % pow(int(signature, 16), key[1], key[0])).encode()
-    signature = (byte_size * 2 - len(signature)) * b'0' + signature
-    asn1 = b'3031300d060960864801650304020105000420'
-    asn1 += sha256(message).hexdigest().encode()
-    if byte_size < len(asn1) // 2 + 11:
-        return False
-    expected = b'0001' + (byte_size - len(asn1) // 2 - 3) * b'ff' + b'00' + asn1
-    return expected == signature
+def update_binary(ydl):
+    LATEST_URL = 'https://api.github.com/repos/blackjack4494/yt-dlc/releases/latest'
+
+    def sha256sum(path):
+        h = hashlib.sha256()
+        b = bytearray(128 * 1024)
+        mv = memoryview(b)
+        with open(os.path.realpath(path), 'rb', buffering=0) as f:
+            for n in iter(lambda: f.readinto(mv), 0):
+                h.update(mv[:n])
+        return h.hexdigest()
+
+    if isinstance(globals().get('__loader__'), zipimporter):
+        pass
+    elif hasattr(sys, 'frozen'):
+        pass
+    else:
+        return ydl.to_screen('It looks like you installed youtube-dlc with a package manager, pip, setup.py or a tarball. Please use that to update')
+
+    filename = compat_realpath(sys.executable if hasattr(sys, 'frozen') else sys.argv[0])
+    build_hash = sha256sum(filename)
+    ydl.to_screen('Current Build Hash %s' % build_hash)
+
+    # Download and check versions info
+    try:
+        latest = ydl._opener.open(LATEST_URL).read().decode('utf-8')
+        latest_json = json.loads(latest)
+    except Exception:
+        if ydl.verbose:
+            ydl.to_screen(encode_compat_str(traceback.format_exc()))
+        ydl.to_screen('ERROR: can\'t obtain versions info. Please try again later.')
+        return ydl.to_screen('Visit https://github.com/blackjack4494/yt-dlc/releases/latest')
+
+    latest_version = latest_json['tag_name']
+
+    def download_sha256sums():
+        download_url = ''
+        for _ in latest_json['assets']:
+            if 'SHA2-256SUMS' in _['name']:
+                download_url = _['browser_download_url']
+                break
+        if download_url:
+            return ydl._opener.open(download_url).read().decode('utf-8')
+        else:
+            ydl.to_screen('ERROR: can\'t obtain SHA256SUMS. Please try again later.')
+            return None
+
+    sha256sums = download_sha256sums()
+    sha256sums_dict = dict(_.split(':') in sha256sums for _ in sha256sums.split('\n'))
+    sha256sums_version = sha256sums_dict.get('version')
+    if sha256sums_version:
+        if build_hash in sha256sums_dict.values():
+            ydl.to_screen('SHA256 checksum successfully validated.')
+        if __version__.split('.') >= sha256sums_version.split('.') and __version__.split('.') >= latest_version.split('.'):
+            ydl.to_screen('youtube-dlc is up to date (%s)' % __version__)
+            return
+        else:
+            ydl.to_screen('Something is wrong here. Trying to update anyway.')
+    else:
+        if build_hash in sha256sums_dict.values():
+            ydl.to_screen('SHA256 checksum successfully validated.')
+        if __version__.split('.') >= latest_version.split('.'):
+            ydl.to_screen('youtube-dlc is up to date (%s)' % __version__)
+            return
+
+    if not latest_version == sha256sums_version:
+        ydl.to_screen('WARNING: available youtube-dlc versions differ. Trying to update anyway.')
+
+    ydl.to_screen('Updating to version ' + latest_version + ' ...')
+
+    version_labels = {
+        'zip_3': '',
+        'exe_64': '.exe',
+        'exe_32': '_x86.exe',
+    }
+
+    def get_bin_info(bin_or_exe, version):
+        label = version_labels['%s_%s' % (bin_or_exe, version)]
+        return next((_ for _ in latest_json['assets'] if _['name'] == 'youtube-dlc%s' % label), {})
+
+    if not os.access(filename, os.W_OK):
+        return ydl.to_screen('no write permissions on %s' % filename)
+
+    # PyInstaller
+    if hasattr(sys, 'frozen'):
+        exe = filename
+        directory = os.path.dirname(exe)
+        if not os.access(directory, os.W_OK):
+            return ydl.to_screen('no write permissions on %s' % directory)
+        try:
+            if os.path.exists(filename + '.old'):
+                os.remove(filename + '.old')
+        except (IOError, OSError):
+            return ydl.to_screen('unable to remove the old version')
+
+        try:
+            arch = platform.architecture()[0][:2]
+            url = get_bin_info('exe', arch).get('browser_download_url')
+            if not url:
+                return ydl.to_screen('unable to fetch updates')
+            urlh = ydl._opener.open(url)
+            newcontent = urlh.read()
+            urlh.close()
+        except (IOError, OSError, StopIteration):
+            return ydl.to_screen('unable to download latest version')
+
+        try:
+            with open(exe + '.new', 'wb') as outf:
+                outf.write(newcontent)
+        except (IOError, OSError):
+            return ydl.to_screen('unable to write the new version')
+
+        expected_sum = sha256sums_dict.get('youtube-dlc%s' % version_labels['%s_%s' % ('exe', arch)])
+        if not expected_sum:
+            ydl.report_warning('no hash information found for the release')
+        elif sha256sum(exe + '.new') != expected_sum:
+            ydl.to_screen('unable to verify the new executable')
+            try:
+                os.remove(exe + '.new')
+            except OSError:
+                return ydl.to_screen('unable to remove corrupt download')
+
+        try:
+            os.rename(exe, exe + '.old')
+        except (IOError, OSError):
+            return ydl.to_screen('unable to move current version')
+        try:
+            os.rename(exe + '.new', exe)
+        except (IOError, OSError):
+            ydl.to_screen('unable to overwrite current version')
+            os.rename(exe + '.old', exe)
+            return
+        try:
+            # Continues to run in the background
+            subprocess.Popen(
+                'ping 127.0.0.1 -n 5 -w 1000 & del /F "%s.old"' % exe,
+                shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            ydl.to_screen('Updated youtube-dlc to version %s' % latest_version)
+            return True  # Exit app
+        except OSError:
+            ydl.to_screen('unable to delete old version')
+
+    # Zip unix package
+    elif isinstance(globals().get('__loader__'), zipimporter):
+        try:
+            url = get_bin_info('zip', '3').get('browser_download_url')
+            if not url:
+                return ydl.to_screen('unable to fetch updates')
+            urlh = ydl._opener.open(url)
+            newcontent = urlh.read()
+            urlh.close()
+        except (IOError, OSError, StopIteration):
+            return ydl.to_screen('unable to download latest version')
+
+        expected_sum = sha256sums_dict.get('youtube-dlc%s' % version_labels['%s_%s' % ('zip', '3')])
+        if not expected_sum:
+            ydl.report_warning('no hash information found for the release')
+        elif hashlib.sha256(newcontent).hexdigest() != expected_sum:
+            return ydl.to_screen('unable to verify the new zip')
+
+        try:
+            with open(filename, 'wb') as outf:
+                outf.write(newcontent)
+        except (IOError, OSError):
+            return ydl.to_screen('unable to overwrite current version')
+
+    ydl.to_screen('Updated youtube-dlc to version %s; Restart youtube-dlc to use the new version' % latest_version)
 
 
 def update_self(to_screen, verbose, opener):
@@ -35,7 +191,7 @@ def update_self(to_screen, verbose, opener):
     UPDATE_URL = 'https://blackjack4494.github.io//update/'
     VERSION_URL = UPDATE_URL + 'LATEST_VERSION'
     JSON_URL = UPDATE_URL + 'versions.json'
-    UPDATES_RSA_KEY = (0x9d60ee4d8f805312fdb15a62f87b95bd66177b91df176765d13514a0f1754bcd2057295c5b6f1d35daa6742c3ffc9a82d3e118861c207995a8031e151d863c9927e304576bc80692bc8e094896fcf11b66f3e29e04e3a71e9a11558558acea1840aec37fc396fb6b65dc81a1c4144e03bd1c011de62e3f1357b327d08426fe93, 65537)
+    # UPDATES_RSA_KEY = (0x9d60ee4d8f805312fdb15a62f87b95bd66177b91df176765d13514a0f1754bcd2057295c5b6f1d35daa6742c3ffc9a82d3e118861c207995a8031e151d863c9927e304576bc80692bc8e094896fcf11b66f3e29e04e3a71e9a11558558acea1840aec37fc396fb6b65dc81a1c4144e03bd1c011de62e3f1357b327d08426fe93, 65537)
 
     def sha256sum():
         h = hashlib.sha256()
@@ -83,11 +239,8 @@ def update_self(to_screen, verbose, opener):
     if 'signature' not in versions_info:
         to_screen('ERROR: the versions file is not signed or corrupted. Aborting.')
         return
-    signature = versions_info['signature']
+    # signature = versions_info['signature']
     del versions_info['signature']
-    if not rsa_verify(json.dumps(versions_info, sort_keys=True).encode('utf-8'), signature, UPDATES_RSA_KEY):
-        to_screen('ERROR: the versions file signature is invalid. Aborting.')
-        return
 
     version_id = versions_info['latest']
 
