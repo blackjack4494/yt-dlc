@@ -1,42 +1,55 @@
-#!/usr/bin/env python3
-# coding: utf-8
-
 from __future__ import unicode_literals
-import sys
-# import os
-import platform
-
-from PyInstaller.utils.hooks import collect_submodules
 from PyInstaller.utils.win32.versioninfo import (
     VarStruct, VarFileInfo, StringStruct, StringTable,
     StringFileInfo, FixedFileInfo, VSVersionInfo, SetVersion,
 )
 import PyInstaller.__main__
 
-arch = sys.argv[1] if len(sys.argv) > 1 else platform.architecture()[0][:2]
-assert arch in ('32', '64')
-print('Building %sbit version' % arch)
-_x86 = '_x86' if arch == '32' else ''
+from datetime import datetime
 
-FILE_DESCRIPTION = 'yt-dlp%s' % (' (32 Bit)' if _x86 else '')
+FILE_DESCRIPTION = 'Media Downloader'
 
-# root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-# print('Changing working directory to %s' % root_dir)
-# os.chdir(root_dir)
+exec(compile(open('youtube_dlc/version.py').read(), 'youtube_dlc/version.py', 'exec'))
 
-exec(compile(open('yt_dlp/version.py').read(), 'yt_dlp/version.py', 'exec'))
-VERSION = locals()['__version__']
+_LATEST_VERSION = locals()['__version__']
 
-VERSION_LIST = VERSION.split('.')
-VERSION_LIST = list(map(int, VERSION_LIST)) + [0] * (4 - len(VERSION_LIST))
+_OLD_VERSION = _LATEST_VERSION.rsplit("-", 1)
 
-print('Version: %s%s' % (VERSION, _x86))
-print('Remember to update the version using devscipts\\update-version.py')
+if len(_OLD_VERSION) > 0:
+    old_ver = _OLD_VERSION[0]
 
-VERSION_FILE = VSVersionInfo(
+old_rev = ''
+if len(_OLD_VERSION) > 1:
+    old_rev = _OLD_VERSION[1]
+
+now = datetime.now()
+# ver = f'{datetime.today():%Y.%m.%d}'
+ver = now.strftime("%Y.%m.%d")
+rev = ''
+
+if old_ver == ver:
+    if old_rev:
+        rev = int(old_rev) + 1
+    else:
+        rev = 1
+
+_SEPARATOR = '-'
+
+version = _SEPARATOR.join(filter(None, [ver, str(rev)]))
+
+print(version)
+
+version_list = ver.split(".")
+_year, _month, _day = [int(value) for value in version_list]
+_rev = 0
+if rev:
+    _rev = rev
+_ver_tuple = _year, _month, _day, _rev
+
+version_file = VSVersionInfo(
     ffi=FixedFileInfo(
-        filevers=VERSION_LIST,
-        prodvers=VERSION_LIST,
+        filevers=_ver_tuple,
+        prodvers=_ver_tuple,
         mask=0x3F,
         flags=0x0,
         OS=0x4,
@@ -45,38 +58,35 @@ VERSION_FILE = VSVersionInfo(
         date=(0, 0),
     ),
     kids=[
-        StringFileInfo([
-            StringTable(
-                '040904B0', [
-                    StringStruct('Comments', 'yt-dlp%s Command Line Interface.' % _x86),
-                    StringStruct('CompanyName', 'https://github.com/yt-dlp'),
-                    StringStruct('FileDescription', FILE_DESCRIPTION),
-                    StringStruct('FileVersion', VERSION),
-                    StringStruct('InternalName', 'yt-dlp%s' % _x86),
-                    StringStruct(
-                        'LegalCopyright',
-                        'pukkandan.ytdlp@gmail.com | UNLICENSE',
-                    ),
-                    StringStruct('OriginalFilename', 'yt-dlp%s.exe' % _x86),
-                    StringStruct('ProductName', 'yt-dlp%s' % _x86),
-                    StringStruct(
-                        'ProductVersion',
-                        '%s%s on Python %s' % (VERSION, _x86, platform.python_version())),
-                ])]),
-        VarFileInfo([VarStruct('Translation', [0, 1200])])
+        StringFileInfo(
+            [
+                StringTable(
+                    "040904B0",
+                    [
+                        StringStruct("Comments", "Youtube-dlc Command Line Interface."),
+                        StringStruct("CompanyName", "theidel@uni-bremen.de"),
+                        StringStruct("FileDescription", FILE_DESCRIPTION),
+                        StringStruct("FileVersion", version),
+                        StringStruct("InternalName", "youtube-dlc"),
+                        StringStruct(
+                            "LegalCopyright",
+                            "theidel@uni-bremen.de | UNLICENSE",
+                        ),
+                        StringStruct("OriginalFilename", "youtube-dlc.exe"),
+                        StringStruct("ProductName", "Youtube-dlc"),
+                        StringStruct("ProductVersion", version + " | git.io/JUGsM"),
+                    ],
+                )
+            ]
+        ),
+        VarFileInfo([VarStruct("Translation", [0, 1200])])
     ]
 )
 
-dependancies = ['Crypto', 'mutagen'] + collect_submodules('websockets')
-excluded_modules = ['test', 'ytdlp_plugins', 'youtube-dl', 'youtube-dlc']
-
 PyInstaller.__main__.run([
-    '--name=yt-dlp%s' % _x86,
+    '--name=youtube-dlc',
     '--onefile',
-    '--icon=devscripts/cloud.ico',
-    *[f'--exclude-module={module}' for module in excluded_modules],
-    *[f'--hidden-import={module}' for module in dependancies],
-    '--upx-exclude=vcruntime140.dll',
-    'yt_dlp/__main__.py',
+    '--icon=win/icon/cloud.ico',
+    'youtube_dlc/__main__.py',
 ])
-SetVersion('dist/yt-dlp%s.exe' % _x86, VERSION_FILE)
+SetVersion('dist/youtube-dlc.exe', version_file)

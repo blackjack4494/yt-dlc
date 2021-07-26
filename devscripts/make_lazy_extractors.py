@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from __future__ import unicode_literals, print_function
 
 from inspect import getsource
@@ -15,13 +14,8 @@ lazy_extractors_filename = sys.argv[1]
 if os.path.exists(lazy_extractors_filename):
     os.remove(lazy_extractors_filename)
 
-# Block plugins from loading
-os.rename('ytdlp_plugins', 'ytdlp_plugins_blocked')
-
-from yt_dlp.extractor import _ALL_CLASSES
-from yt_dlp.extractor.common import InfoExtractor, SearchInfoExtractor
-
-os.rename('ytdlp_plugins_blocked', 'ytdlp_plugins')
+from youtube_dlc.extractor import _ALL_CLASSES
+from youtube_dlc.extractor.common import InfoExtractor, SearchInfoExtractor
 
 with open('devscripts/lazy_load_template.py', 'rt') as f:
     module_template = f.read()

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from __future__ import unicode_literals
 
 import io
@@ -9,7 +8,7 @@ import re
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 README_FILE = os.path.join(ROOT_DIR, 'README.md')
 
-PREFIX = r'''%yt-dlp(1)
+PREFIX = r'''%youtube-dlc(1)
 
 # NAME
 
@@ -17,7 +16,7 @@ youtube\-dl \- download videos from youtube.com or other video platforms
 
 # SYNOPSIS
 
-**yt-dlp** \[OPTIONS\] URL [URL...]
+**youtube-dlc** \[OPTIONS\] URL [URL...]
 
 '''
 
@@ -34,7 +33,7 @@ def main():
         readme = f.read()
 
     readme = re.sub(r'(?s)^.*?(?=# DESCRIPTION)', '', readme)
-    readme = re.sub(r'\s+yt-dlp \[OPTIONS\] URL \[URL\.\.\.\]', '', readme)
+    readme = re.sub(r'\s+youtube-dlc \[OPTIONS\] URL \[URL\.\.\.\]', '', readme)
     readme = PREFIX + readme
 
     readme = filter_options(readme)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 from __future__ import unicode_literals
 
@@ -10,13 +10,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from test.helper import (
     assertGreaterEqual,
-    expect_info_dict,
     expect_warnings,
     get_params,
     gettestcases,
-    is_download_test,
-    report_warning,
+    expect_info_dict,
     try_rm,
+    report_warning,
 )
 
 
@@ -25,24 +24,24 @@ import io
 import json
 import socket
 
-import yt_dlp.YoutubeDL
-from yt_dlp.compat import (
+import youtube_dlc.YoutubeDL
+from youtube_dlc.compat import (
     compat_http_client,
     compat_urllib_error,
     compat_HTTPError,
 )
-from yt_dlp.utils import (
+from youtube_dlc.utils import (
     DownloadError,
     ExtractorError,
     format_bytes,
     UnavailableVideoError,
 )
-from yt_dlp.extractor import get_info_extractor
+from youtube_dlc.extractor import get_info_extractor
 
 RETRIES = 3
 
 
-class YoutubeDL(yt_dlp.YoutubeDL):
+class YoutubeDL(youtube_dlc.YoutubeDL):
     def __init__(self, *args, **kwargs):
         self.to_stderr = self.to_screen
         self.processed_info_dicts = []
@@ -65,7 +64,6 @@ def _file_md5(fn):
 defs = gettestcases()
 
 
-@is_download_test
 class TestDownload(unittest.TestCase):
     # Parallel testing in nosetests. See
     # http://nose.readthedocs.org/en/latest/doc_tests/test_multiprocess/multiprocess.html
@@ -94,7 +92,7 @@ class TestDownload(unittest.TestCase):
 def generator(test_case, tname):
 
     def test_template(self):
-        ie = yt_dlp.extractor.get_info_extractor(test_case['name'])()
+        ie = youtube_dlc.extractor.get_info_extractor(test_case['name'])()
         other_ies = [get_info_extractor(ie_key)() for ie_key in test_case.get('add_ie', [])]
         is_playlist = any(k.startswith('playlist') for k in test_case)
         test_cases = test_case.get(
@@ -123,7 +121,6 @@ def generator(test_case, tname):
         params['outtmpl'] = tname + '_' + params['outtmpl']
         if is_playlist and 'playlist' not in test_case:
             params.setdefault('extract_flat', 'in_playlist')
-            params.setdefault('playlistend', test_case.get('playlist_mincount'))
             params.setdefault('skip_download', True)
 
         ydl = YoutubeDL(params, auto_init=False)

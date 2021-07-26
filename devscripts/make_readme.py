@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-
-# yt-dlp --help | make_readme.py
-# This must be run in a console of correct width
-
 from __future__ import unicode_literals
 
 import io
@@ -18,14 +13,14 @@ if isinstance(helptext, bytes):
 with io.open(README_FILE, encoding='utf-8') as f:
     oldreadme = f.read()
 
-header = oldreadme[:oldreadme.index('## General Options:')]
-footer = oldreadme[oldreadme.index('# CONFIGURATION'):]
+header = oldreadme[:oldreadme.index('# OPTIONS')]
+# footer = oldreadme[oldreadme.index('# CONFIGURATION'):]
 
-options = helptext[helptext.index('  General Options:'):]
+options = helptext[helptext.index('  General Options:') + 19:]
 options = re.sub(r'(?m)^  (\w.+)$', r'## \1', options)
-options = options + '\n'
+options = '# OPTIONS\n' + options + '\n'
 
 with io.open(README_FILE, 'w', encoding='utf-8') as f:
     f.write(header)
     f.write(options)
-    f.write(footer)
+    # f.write(footer)

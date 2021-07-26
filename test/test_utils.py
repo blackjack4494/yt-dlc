@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # coding: utf-8
 
 from __future__ import unicode_literals
@@ -12,19 +12,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Various small unit tests
 import io
-import itertools
 import json
 import xml.etree.ElementTree
 
-from yt_dlp.utils import (
+from youtube_dlc.utils import (
     age_restricted,
     args_to_str,
     encode_base_n,
     caesar,
     clean_html,
-    clean_podcast_url,
     date_from_str,
-    datetime_from_str,
     DateRange,
     detect_exe_version,
     determine_ext,
@@ -67,7 +64,6 @@ from yt_dlp.utils import (
     sanitize_filename,
     sanitize_path,
     sanitize_url,
-    sanitized_Request,
     expand_path,
     prepend_extension,
     replace_extension,
@@ -108,10 +104,8 @@ from yt_dlp.utils import (
     cli_valueless_option,
     cli_bool_option,
     parse_codecs,
-    iri_to_uri,
-    LazyList,
 )
-from yt_dlp.compat import (
+from youtube_dlc.compat import (
     compat_chr,
     compat_etree_fromstring,
     compat_getenv,
@@ -128,7 +122,6 @@ class TestUtil(unittest.TestCase):
         self.assertTrue(timeconvert('bougrg') is None)
 
     def test_sanitize_filename(self):
-        self.assertEqual(sanitize_filename(''), '')
         self.assertEqual(sanitize_filename('abc'), 'abc')
         self.assertEqual(sanitize_filename('abc_d-e'), 'abc_d-e')
 
@@ -242,27 +235,17 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(sanitize_url('httpss://foo.bar'), 'https://foo.bar')
         self.assertEqual(sanitize_url('rmtps://foo.bar'), 'rtmps://foo.bar')
         self.assertEqual(sanitize_url('https://foo.bar'), 'https://foo.bar')
-        self.assertEqual(sanitize_url('foo bar'), 'foo bar')
-
-    def test_extract_basic_auth(self):
-        auth_header = lambda url: sanitized_Request(url).get_header('Authorization')
-        self.assertFalse(auth_header('http://foo.bar'))
-        self.assertFalse(auth_header('http://:foo.bar'))
-        self.assertEqual(auth_header('http://@foo.bar'), 'Basic Og==')
-        self.assertEqual(auth_header('http://:pass@foo.bar'), 'Basic OnBhc3M=')
-        self.assertEqual(auth_header('http://user:@foo.bar'), 'Basic dXNlcjo=')
-        self.assertEqual(auth_header('http://user:pass@foo.bar'), 'Basic dXNlcjpwYXNz')
 
     def test_expand_path(self):
         def env(var):
             return '%{0}%'.format(var) if sys.platform == 'win32' else '${0}'.format(var)
 
-        compat_setenv('yt_dlp_EXPATH_PATH', 'expanded')
-        self.assertEqual(expand_path(env('yt_dlp_EXPATH_PATH')), 'expanded')
+        compat_setenv('youtube_dlc_EXPATH_PATH', 'expanded')
+        self.assertEqual(expand_path(env('youtube_dlc_EXPATH_PATH')), 'expanded')
         self.assertEqual(expand_path(env('HOME')), compat_getenv('HOME'))
         self.assertEqual(expand_path('~'), compat_getenv('HOME'))
         self.assertEqual(
-            expand_path('~/%s' % env('yt_dlp_EXPATH_PATH')),
+            expand_path('~/%s' % env('youtube_dlc_EXPATH_PATH')),
             '%s/expanded' % compat_getenv('HOME'))
 
     def test_prepend_extension(self):
@@ -326,18 +309,8 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(date_from_str('yesterday'), date_from_str('now-1day'))
         self.assertEqual(date_from_str('now+7day'), date_from_str('now+1week'))
         self.assertEqual(date_from_str('now+14day'), date_from_str('now+2week'))
-        self.assertEqual(date_from_str('20200229+365day'), date_from_str('20200229+1year'))
-        self.assertEqual(date_from_str('20210131+28day'), date_from_str('20210131+1month'))
-
-    def test_datetime_from_str(self):
-        self.assertEqual(datetime_from_str('yesterday', precision='day'), datetime_from_str('now-1day', precision='auto'))
-        self.assertEqual(datetime_from_str('now+7day', precision='day'), datetime_from_str('now+1week', precision='auto'))
-        self.assertEqual(datetime_from_str('now+14day', precision='day'), datetime_from_str('now+2week', precision='auto'))
-        self.assertEqual(datetime_from_str('20200229+365day', precision='day'), datetime_from_str('20200229+1year', precision='auto'))
-        self.assertEqual(datetime_from_str('20210131+28day', precision='day'), datetime_from_str('20210131+1month', precision='auto'))
-        self.assertEqual(datetime_from_str('20210131+59day', precision='day'), datetime_from_str('20210131+2month', precision='auto'))
-        self.assertEqual(datetime_from_str('now+1day', precision='hour'), datetime_from_str('now+24hours', precision='auto'))
-        self.assertEqual(datetime_from_str('now+23hours', precision='hour'), datetime_from_str('now+23hours', precision='auto'))
+        self.assertEqual(date_from_str('now+365day'), date_from_str('now+1year'))
+        self.assertEqual(date_from_str('now+30day'), date_from_str('now+1month'))
 
     def test_daterange(self):
         _20century = DateRange("19000101", "20000101")
@@ -581,11 +554,6 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(url_or_none('http$://foo.de'), None)
         self.assertEqual(url_or_none('http://foo.de'), 'http://foo.de')
         self.assertEqual(url_or_none('//foo.de'), '//foo.de')
-        self.assertEqual(url_or_none('s3://foo.de'), None)
-        self.assertEqual(url_or_none('rtmpte://foo.de'), 'rtmpte://foo.de')
-        self.assertEqual(url_or_none('mms://foo.de'), 'mms://foo.de')
-        self.assertEqual(url_or_none('rtspu://foo.de'), 'rtspu://foo.de')
-        self.assertEqual(url_or_none('ftps://foo.de'), 'ftps://foo.de')
 
     def test_parse_age_limit(self):
         self.assertEqual(parse_age_limit(None), None)
@@ -1054,9 +1022,6 @@ class TestUtil(unittest.TestCase):
         on = js_to_json('{ "040": "040" }')
         self.assertEqual(json.loads(on), {'040': '040'})
 
-        on = js_to_json('[1,//{},\n2]')
-        self.assertEqual(json.loads(on), [1, 2])
-
     def test_js_to_json_malformed(self):
         self.assertEqual(js_to_json('42a1'), '42"a1"')
         self.assertEqual(js_to_json('42a-1'), '42"a"-1')
@@ -1453,8 +1418,8 @@ Line 1
         self.assertEqual(caesar('ebg', 'acegik', -2), 'abc')
 
     def test_rot47(self):
-        self.assertEqual(rot47('yt-dlp'), r'JE\5=A')
-        self.assertEqual(rot47('YT-DLP'), r'*%\s{!')
+        self.assertEqual(rot47('youtube-dlc'), r'J@FEF36\5=4')
+        self.assertEqual(rot47('YOUTUBE-DLC'), r'*~&%&qt\s{r')
 
     def test_urshift(self):
         self.assertEqual(urshift(3, 1), 1)
@@ -1499,77 +1464,6 @@ Line 1
         self.assertEqual(get_elements_by_attribute('class', 'foo bar', html), ['nice', 'also nice'])
         self.assertEqual(get_elements_by_attribute('class', 'foo', html), [])
         self.assertEqual(get_elements_by_attribute('class', 'no-such-foo', html), [])
-
-    def test_iri_to_uri(self):
-        self.assertEqual(
-            iri_to_uri('https://www.google.com/search?q=foo&ie=utf-8&oe=utf-8&client=firefox-b'),
-            'https://www.google.com/search?q=foo&ie=utf-8&oe=utf-8&client=firefox-b')  # Same
-        self.assertEqual(
-            iri_to_uri('https://www.google.com/search?q=Käsesoßenrührlöffel'),  # German for cheese sauce stirring spoon
-            'https://www.google.com/search?q=K%C3%A4seso%C3%9Fenr%C3%BChrl%C3%B6ffel')
-        self.assertEqual(
-            iri_to_uri('https://www.google.com/search?q=lt<+gt>+eq%3D+amp%26+percent%25+hash%23+colon%3A+tilde~#trash=?&garbage=#'),
-            'https://www.google.com/search?q=lt%3C+gt%3E+eq%3D+amp%26+percent%25+hash%23+colon%3A+tilde~#trash=?&garbage=#')
-        self.assertEqual(
-            iri_to_uri('http://правозащита38.рф/category/news/'),
-            'http://xn--38-6kcaak9aj5chl4a3g.xn--p1ai/category/news/')
-        self.assertEqual(
-            iri_to_uri('http://www.правозащита38.рф/category/news/'),
-            'http://www.xn--38-6kcaak9aj5chl4a3g.xn--p1ai/category/news/')
-        self.assertEqual(
-            iri_to_uri('https://i❤.ws/emojidomain/👍👏🤝💪'),
-            'https://xn--i-7iq.ws/emojidomain/%F0%9F%91%8D%F0%9F%91%8F%F0%9F%A4%9D%F0%9F%92%AA')
-        self.assertEqual(
-            iri_to_uri('http://日本語.jp/'),
-            'http://xn--wgv71a119e.jp/')
-        self.assertEqual(
-            iri_to_uri('http://导航.中国/'),
-            'http://xn--fet810g.xn--fiqs8s/')
-
-    def test_clean_podcast_url(self):
-        self.assertEqual(clean_podcast_url('https://www.podtrac.com/pts/redirect.mp3/chtbl.com/track/5899E/traffic.megaphone.fm/HSW7835899191.mp3'), 'https://traffic.megaphone.fm/HSW7835899191.mp3')
-        self.assertEqual(clean_podcast_url('https://play.podtrac.com/npr-344098539/edge1.pod.npr.org/anon.npr-podcasts/podcast/npr/waitwait/2020/10/20201003_waitwait_wwdtmpodcast201003-015621a5-f035-4eca-a9a1-7c118d90bc3c.mp3'), 'https://edge1.pod.npr.org/anon.npr-podcasts/podcast/npr/waitwait/2020/10/20201003_waitwait_wwdtmpodcast201003-015621a5-f035-4eca-a9a1-7c118d90bc3c.mp3')
-
-    def test_LazyList(self):
-        it = list(range(10))
-
-        self.assertEqual(list(LazyList(it)), it)
-        self.assertEqual(LazyList(it).exhaust(), it)
-        self.assertEqual(LazyList(it)[5], it[5])
-
-        self.assertEqual(LazyList(it)[::2], it[::2])
-        self.assertEqual(LazyList(it)[1::2], it[1::2])
-        self.assertEqual(LazyList(it)[6:2:-2], it[6:2:-2])
-        self.assertEqual(LazyList(it)[::-1], it[::-1])
-
-        self.assertTrue(LazyList(it))
-        self.assertFalse(LazyList(range(0)))
-        self.assertEqual(len(LazyList(it)), len(it))
-        self.assertEqual(repr(LazyList(it)), repr(it))
-        self.assertEqual(str(LazyList(it)), str(it))
-
-        self.assertEqual(list(LazyList(it).reverse()), it[::-1])
-        self.assertEqual(list(LazyList(it).reverse()[1:3:7]), it[::-1][1:3:7])
-
-    def test_LazyList_laziness(self):
-
-        def test(ll, idx, val, cache):
-            self.assertEqual(ll[idx], val)
-            self.assertEqual(getattr(ll, '_LazyList__cache'), list(cache))
-
-        ll = LazyList(range(10))
-        test(ll, 0, 0, range(1))
-        test(ll, 5, 5, range(6))
-        test(ll, -3, 7, range(10))
-
-        ll = LazyList(range(10)).reverse()
-        test(ll, -1, 0, range(1))
-        test(ll, 3, 6, range(10))
-
-        ll = LazyList(itertools.count())
-        test(ll, 10, 10, range(11))
-        ll.reverse()
-        test(ll, -15, 14, range(15))
 
 
 if __name__ == '__main__':

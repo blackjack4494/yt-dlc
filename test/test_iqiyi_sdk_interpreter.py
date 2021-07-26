@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 from __future__ import unicode_literals
 
@@ -8,8 +8,8 @@ import sys
 import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from test.helper import FakeYDL, is_download_test
-from yt_dlp.extractor import IqiyiIE
+from test.helper import FakeYDL
+from youtube_dlc.extractor import IqiyiIE
 
 
 class IqiyiIEWithCredentials(IqiyiIE):
@@ -31,7 +31,6 @@ class WarningLogger(object):
         pass
 
 
-@is_download_test
 class TestIqiyiSDKInterpreter(unittest.TestCase):
     def test_iqiyi_sdk_interpreter(self):
         '''

@@ -1,5 +1,3 @@
-# UNUSED
-
 #!/bin/bash
 
 # Run with as parameter a setup.py that works in the current directory

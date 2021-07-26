@@ -1,6 +1,4 @@
-# Unused
-
-#!/usr/bin/env python3
+#!/usr/bin/env python
 from __future__ import unicode_literals
 
 import itertools
@@ -11,11 +9,11 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from yt_dlp.compat import (
+from youtube_dlc.compat import (
     compat_print,
     compat_urllib_request,
 )
-from yt_dlp.utils import format_bytes
+from youtube_dlc.utils import format_bytes
 
 
 def format_size(bytes):
@@ -38,9 +36,9 @@ for page in itertools.count(1):
             asset_name = asset['name']
             total_bytes += asset['download_count'] * asset['size']
             if all(not re.match(p, asset_name) for p in (
-                    r'^yt-dlp$',
-                    r'^yt-dlp-\d{4}\.\d{2}\.\d{2}(?:\.\d+)?\.tar\.gz$',
-                    r'^yt-dlp\.exe$')):
+                    r'^youtube-dlc$',
+                    r'^youtube-dlc-\d{4}\.\d{2}\.\d{2}(?:\.\d+)?\.tar\.gz$',
+                    r'^youtube-dlc\.exe$')):
                 continue
             compat_print(
                 ' %s size: %s downloads: %d'

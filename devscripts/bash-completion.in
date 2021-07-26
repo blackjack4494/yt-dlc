@@ -1,4 +1,4 @@
-__yt_dlp()
+__youtube_dlc()
 {
     local cur prev opts fileopts diropts keywords
     COMPREPLY=()
@@ -26,4 +26,4 @@ __yt_dlp()
     fi
 }
 
-complete -F __yt_dlp yt-dlp
+complete -F __youtube_dlc youtube-dlc

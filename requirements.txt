@@ -1,3 +1,0 @@
-mutagen
-pycryptodome
-websockets
