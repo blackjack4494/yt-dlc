@@ -44,9 +44,13 @@ You may want to use `python3` instead of `python`
 
     python -m pip install --upgrade youtube-dlc
 
+To get the latest release with pip git
+
+    python -m pip install --upgrade git+https://github.com/blackjack4494/yt-dlc@release
+
 If you want to install the current master branch
 
-    python -m pip install git+https://github.com/blackjack4494/yt-dlc
+    python -m pip install --upgrade git+https://github.com/blackjack4494/yt-dlc@master
 
 **UNIX** (Linux, macOS, etc.)  
 Using wget:
@@ -61,6 +65,7 @@ Using curl:
 
 
 **Windows** users can download [youtube-dlc.exe](https://github.com/blackjack4494/yt-dlc/releases/latest/download/youtube-dlc.exe) (**do not** put in `C:\Windows\System32`!).  
+Or get the 32 Bit version [youtube-dlc_x86.exe](https://github.com/blackjack4494/yt-dlc/releases/latest/download/youtube-dlc_x86.exe) and rename it if needed.
 
 **Compile**
 To build the Windows executable yourself (without version info!)
@@ -72,7 +77,7 @@ Or simply execute the `make_win.bat` if pyinstaller is installed.
 There will be a `youtube-dlc.exe` in `/dist`  
 
 New way to build Windows is to use `python pyinst.py` (please use python3 64Bit)  
-For 32Bit Version use a 32Bit Version of python (3 preferred here as well) and run `python pyinst32.py`  
+For 32 Bit Version use a 32 Bit Version of python (3 preferred here as well) and run `python pyinst32.py`  
 
 For Unix:
 You will need the required build tools  
@@ -84,7 +89,7 @@ Then simply type this
 
 # UPDATE
 **DO NOT UPDATE using `-U` !** instead download binaries again or when installed with pip use a described above when installing.  
-I will add some memorable short links to the binaries so you can download them easier.
+_Next release will include in-built updater_
 
 # DESCRIPTION
 **youtube-dlc** is a command-line program to download videos from YouTube.com and a few more sites. It requires the Python interpreter, version 2.6, 2.7, or 3.2+, and it is not platform specific. It should work on your Unix box, on Windows or on macOS. It is released to the public domain, which means you can modify it, redistribute it or use it however you like.
