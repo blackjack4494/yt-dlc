@@ -7,6 +7,7 @@ import time
 import random
 
 from ..compat import compat_os_name
+from ..heartbeat import Heartbeat
 from ..utils import (
     decodeArgument,
     encodeFilename,
@@ -372,6 +373,12 @@ class FileDownloader(object):
                     '[download] Sleeping %s seconds...' % (
                         sleep_interval_sub))
                 time.sleep(sleep_interval_sub)
+
+        if info_dict.get('heartbeat'):
+            self.heartbeat = Heartbeat(self.ydl, info_dict.get('heartbeat'))
+            self.add_progress_hook(self.heartbeat.check_download_status)
+            self.heartbeat.start()
+
         return self.real_download(filename, info_dict)
 
     def real_download(self, filename, info_dict):
